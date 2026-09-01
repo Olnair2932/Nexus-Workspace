@@ -1,5 +1,40 @@
-node_modules/
+# ==========================
+# SEGREDOS
+# ==========================
 .env
+*.env
+
+# ==========================
+# NODE
+# ==========================
+node_modules/
+javascript/node_modules/
+
+# ==========================
+# PYTHON
+# ==========================
 __pycache__/
-uploads/
-html/uploads/
+*.pyc
+*.pyo
+
+# Backups Python
+*.backup_*
+
+# ==========================
+# UPLOADS TEMPORÁRIOS
+# ==========================
+html/uploads/*
+!html/uploads/.gitkeep
+
+# ==========================
+# HTML GERADOS
+# ==========================
+html/html_gerados/*.html
+!html/html_gerados/index.html
+
+# Índices temporários/testes
+html/html_gerados/index_duplicado.json
+html/html_gerados/index_raiz.json
+
+# Sistema
+.DS_Store
