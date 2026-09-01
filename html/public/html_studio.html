@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS HTML STUDIO</title>
+    <link rel="stylesheet" href="html_studio.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-icon">N</div>
+            <div><h1>NEXUS HTML STUDIO</h1><span>Gerador de páginas de produtos</span></div>
+        </div>
+        <div class="status"><span class="status-dot"></span>SISTEMA PRONTO - gemini-3.1-flash-lite</div>
+    </header>
+    <main class="dashboard">
+        <section class="panel">
+            <div class="panel-header">
+                <div><h2>➕ Novo anúncio</h2><p>Crie uma página HTML profissional para divulgar seu produto.</p></div>
+                <span class="panel-number">01</span>
+            </div>
+            <div class="form-grid">
+                <div class="field full"><label for="produtoNome">🛍️ Nome do produto</label><input id="produtoNome" type="text" placeholder="Ex.: Perfume Masculino"></div>
+                <div class="field"><label for="produtoPreco">💰 Preço</label><input id="produtoPreco" type="text" placeholder="Ex.: R$ 99,90"></div>
+                <div class="field"><label for="produtoImagem">🖼️ Imagem do produto</label><input id="produtoImagem" type="file" accept="image/*"></div>
+                <div class="field full"><label for="produtoDescricao">📝 Descrição</label><textarea id="produtoDescricao" rows="6" placeholder="Digite uma descrição do produto..."></textarea></div>
+            </div>
+            <div class="image-preview">
+                <div class="preview-title">Pré-visualização da imagem</div>
+                <div class="preview-box"><span id="previewTexto">Nenhuma imagem selecionada</span><img id="previewImagem" alt="Pré-visualização"></div>
+            </div>
+            <div class="actions">
+                <button class="btn-primary" id="btnGerar">🚀 GERAR HTML</button>
+                <button class="btn-secondary" id="btnLimpar">🧹 LIMPAR</button>
+            </div>
+            <button class="btn-primary" id="btnSalvar" style="display: none;">💾 SALVAR ALTERAÇÕES</button>
+        </section>
+        <section class="panel">
+            <div class="panel-header">
+                <div><h2>👁️ Pré-visualização</h2><p>Veja como o anúncio ficará antes de gerar a página.</p></div>
+                <span class="panel-number">02</span>
+            </div>
+            <div class="product-preview">
+                <div class="product-image-area"><img id="produtoPreviewImagem" src="" alt="Produto"><div id="produtoPreviewPlaceholder">🖼️<span>Imagem do produto</span></div></div>
+                <div class="product-info">
+                    <h3 id="produtoPreviewNome">Produto Exemplo</h3>
+                    <div id="produtoPreviewPreco" class="product-price">R$ 99,90</div>
+                    <p id="produtoPreviewDescricao">A descrição do produto aparecerá aqui.</p>
+                    <button class="whatsapp-preview">💬 Comprar pelo WhatsApp</button>
+                    <button type="button" class="compartilhar-preview" id="compartilharPreview">📤 Compartilhar página</button>
+                </div>
+            </div>
+        </section>
+        <section class="panel">
+            <div class="panel-header">
+                <div><h2>📁 HTML Gerados</h2><p>Páginas criadas pelo Nexus. Pasta: ~/workspace/html/html_gerados</p></div>
+                <span class="panel-number">03</span>
+            </div>
+            <div id="listaHTML" class="html-list">
+                <div class="empty-state"><div class="empty-icon">📄</div><strong>Nenhuma página criada</strong><span>Os anúncios gerados aparecerão aqui.</span></div>
+            </div>
+        </section>
+    </main>
+    <footer><span>NEXUS HTML STUDIO</span><span>Sistema de geração de páginas - gemini-3.1-flash-lite | ~/workspace</span></footer>
+    <script src="html_studio.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cereja Rouge Body Splash - O Boticário</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .img-container { width: 100%; overflow: hidden; border-radius: 15px; margin-bottom: 20px; display: flex; justify-content: center; background: #fafafa; }
+        #product-img { width: 100%; max-width: 400px; transition: transform 0.3s ease; cursor: zoom-in; }
+        h1 { font-size: 24px; margin: 10px 0; color: #d63384; }
+        .price { font-size: 22px; font-weight: bold; color: #222; margin-bottom: 15px; }
+        .description { line-height: 1.6; color: #555; margin-bottom: 20px; }
+        .btn { display: block; width: 100%; box-sizing: border-box; margin-top: 12px; padding: 15px; border-radius: 12px; text-align: center; text-decoration: none; font-weight: bold; font-size: 16px; border: none; cursor: pointer; color: #fff; }
+        .btn-wa { background: #25D366; }
+        .btn-share { background: #2a3441; }
+        .btn-ai { background: #6c2bd9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="img-container">
+        <img id="product-img" src="/uploads/1788239259809_5c175aaa-00b1-4fc9-b98b-e66d7eba01e5-nativa-spa-cereja-rouge-body-splash-frontal.jpg" alt="Cereja Rouge Body Splash">
+    </div>
+
+    <h1 id="prod-nome">Cereja Rouge Body Splash</h1>
+    <div class="price">R$ 115,00</div>
+    <div class="description" id="prod-desc">
+        Envolva-se na sofisticação e no mistério da linha Nativa SPA Cereja Rouge. Este Body Splash traz a intensidade da cereja em uma fragrância marcante, perfeita para deixar sua pele perfumada e renovada durante todo o dia. Sinta a autoconfiança de uma fragrância que celebra a sua essência.
+    </div>
+
+    <a href="https://wa.me/5511999999999?text=Olá, tenho interesse no produto: Cereja Rouge Body Splash por R$ 115,00" class="btn btn-wa">💬 Comprar pelo WhatsApp</a>
+    
+    <button class="btn btn-share" onclick="compartilhar()">📤 Compartilhar página</button>
+    
+    <button class="btn btn-ai" onclick="falarComAI()">🤖 Falar com Atendimento Meta AI</button>
+</div>
+
+<script>
+    const img = document.getElementById('product-img');
+    let zoomed = false;
+    img.addEventListener('dblclick', () => {
+        zoomed = !zoomed;
+        img.style.transform = zoomed ? 'scale(2)' : 'scale(1)';
+    });
+
+    function compartilhar() {
+        if (navigator.share) {
+            navigator.share({ title: 'Cereja Rouge', url: window.location.href }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert("Link copiado para a área de transferência!");
+        }
+    }
+
+    function falarComAI() {
+        const nome = document.getElementById('prod-nome').innerText;
+        const preco = "R$ 115,00";
+        const descricao = document.getElementById('prod-desc').innerText;
+        const textoContexto = `Produto: ${nome} | Preço: ${preco} | Descrição: ${descricao} | Link: ${window.location.href}`;
+        
+        navigator.clipboard.writeText(textoContexto).then(() => {
+            alert("Descrição copiada! Cole no atendimento Meta AI para ter contexto completo.");
+            window.open("https://wa.me/ais/867051314767696?s=5", "_blank");
+        });
+    }
+</script>
+
+</body>
+</html>

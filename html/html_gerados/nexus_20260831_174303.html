@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Body Splash Desodorante Colônia | Oferta Exclusiva</title>
+    <style>
+        :root {
+            --primary: #25d366;
+            --secondary: #6200ea;
+            --bg: #f4f7f6;
+            --text: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #fff;
+            max-width: 450px;
+            width: 100%;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .img-container {
+            width: 100%;
+            height: 350px;
+            overflow: hidden;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eee;
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+        .img-container img {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+        }
+        .img-container.zoomed {
+            cursor: zoom-out;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: rgba(0,0,0,0.9);
+        }
+        .img-container.zoomed img {
+            transform: scale(2.5);
+        }
+        h1 { margin: 20px 0 10px; font-size: 1.5rem; }
+        .price { font-size: 1.8rem; font-weight: bold; color: var(--secondary); margin-bottom: 15px; }
+        .desc { line-height: 1.6; color: #666; margin-bottom: 25px; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-bottom: 10px;
+            transition: opacity 0.2s;
+        }
+        .btn-wp { background: var(--primary); color: white; }
+        .btn-share { background: #eee; color: #333; }
+        .btn:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="img-container" id="productImageContainer">
+        <img src="/uploads/1788208977561_IMG-20260830-WA0004.jpg" alt="Body Splash Desodorante Colônia" id="productImage">
+    </div>
+    
+    <h1>Body Splash Desodorante Colônia</h1>
+    <div class="price">R$ 103,00</div>
+    <p class="desc">
+        Sinta a refrescância que dura o dia todo. Nosso Body Splash oferece uma fragrância leve e envolvente, perfeita para qualquer ocasião. Sinta-se renovada, confiante e perfumada com um toque de sofisticação.
+    </p>
+
+    <a href="https://wa.me/?text=Olá! Tenho interesse no produto: Body Splash Desodorante Colônia por R$ 103,00" class="btn btn-wp" target="_blank">Comprar pelo WhatsApp</a>
+    <button class="btn btn-share" onclick="compartilhar()">Compartilhar página</button>
+</div>
+
+<script>
+    const container = document.getElementById('productImageContainer');
+    let lastTap = 0;
+
+    function alternarZoom() {
+        container.classList.toggle('zoomed');
+    }
+
+    container.addEventListener('dblclick', alternarZoom);
+
+    container.addEventListener('touchstart', function(e) {
+        let currentTime = new Date().getTime();
+        let tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            alternarZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    function compartilhar() {
+        const data = {
+            title: 'Body Splash Desodorante Colônia',
+            text: 'Confira este produto incrível!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(data).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

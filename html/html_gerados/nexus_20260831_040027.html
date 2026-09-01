@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandália Feminina - Oferta Exclusiva</title>
+    <style>
+        :root {
+            --primary: #e91e63;
+            --secondary: #25d366;
+            --bg: #f4f4f9;
+            --text: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            max-width: 400px;
+            width: 100%;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .img-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eee;
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+
+        .img-container.zoomed {
+            transform: scale(2);
+            cursor: zoom-out;
+            z-index: 100;
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+
+        h1 { margin: 20px 0 10px; font-size: 1.5rem; }
+        .price { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; }
+        .desc { margin-bottom: 20px; line-height: 1.6; color: #666; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-whatsapp { background: var(--secondary); color: white; }
+        .btn-share { background: #3498db; color: white; }
+        .btn:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="img-container" id="productImage">
+        <img src="/uploads/1788159598086_2Q__.jpg" alt="Sandália Feminina">
+    </div>
+    
+    <h1>Sandália Feminina</h1>
+    <div class="price">R$ 50,00</div>
+    <p class="desc">Sandália feminina elegante e confortável. Disponível no tamanho 36. Perfeita para qualquer ocasião.</p>
+    
+    
+    <button class="btn btn-share" id="shareBtn">Compartilhar página</button>
+</div>
+
+<script>
+    const imgContainer = document.getElementById('productImage');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        imgContainer.classList.toggle('zoomed');
+    }
+
+    // Zoom para computador
+    imgContainer.addEventListener('dblclick', toggleZoom);
+
+    // Zoom para mobile
+    imgContainer.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            toggleZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    // Compartilhamento
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+        const data = {
+            title: 'Sandália Feminina',
+            text: 'Confira esta sandália incrível!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(data);
+            } catch (err) {
+                console.log('Erro ao compartilhar');
+            }
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

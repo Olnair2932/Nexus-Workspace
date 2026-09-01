@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cereja Rouge - O Boticário</title>
+    <style>
+        :root {
+            --primary: #d32f2f;
+            --secondary: #25d366;
+            --bg: #f4f4f9;
+            --text: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            max-width: 500px;
+            width: 100%;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #fff;
+            border-radius: 10px;
+            cursor: zoom-in;
+        }
+        #product-img {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.3s ease;
+            touch-action: none;
+        }
+        #product-img.zoomed {
+            transform: scale(2);
+            cursor: zoom-out;
+        }
+        h1 { margin: 20px 0 10px; font-size: 1.5rem; color: var(--primary); }
+        .price { font-size: 1.8rem; font-weight: bold; margin-bottom: 15px; }
+        .description { line-height: 1.6; margin-bottom: 25px; color: #666; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            text-align: center;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .btn-whatsapp { background: var(--secondary); color: white; }
+        .btn-share { background: #333; color: white; }
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="image-container" id="img-wrapper">
+        <img src="/uploads/1788235547879_IMG-20260830-WA0010.jpg" alt="Cereja Rouge" id="product-img">
+    </div>
+    
+    <h1>Cereja Rouge Desodorante Colônia</h1>
+    <div class="price">R$ 103,00</div>
+    <p class="description">
+        Desperte seus sentidos com a fragrância envolvente do Cereja Rouge. 
+        Uma combinação sofisticada e marcante, perfeita para quem deseja deixar sua marca por onde passa. 
+        Com 200ml de pura intensidade, este desodorante colônia oferece frescor prolongado e uma fixação irresistível.
+    </p>
+
+    <a href="https://wa.me/?text=Olá! Tenho interesse no produto: Cereja Rouge Desodorante Colônia" class="btn btn-whatsapp" target="_blank">Comprar pelo WhatsApp</a>
+    <button class="btn btn-share" onclick="compartilhar()">Compartilhar página</button>
+</div>
+
+<script>
+    const img = document.getElementById('product-img');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        img.classList.toggle('zoomed');
+    }
+
+    img.addEventListener('dblclick', toggleZoom);
+
+    img.addEventListener('touchstart', (e) => {
+        const now = new Date().getTime();
+        const timesince = now - lastTap;
+        if ((timesince < 300) && (timesince > 0)) {
+            toggleZoom();
+        }
+        lastTap = now;
+    });
+
+    async function compartilhar() {
+        const data = {
+            title: 'Cereja Rouge - O Boticário',
+            text: 'Confira este produto incrível!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(data);
+            } catch (err) {
+                console.error('Erro ao compartilhar', err);
+            }
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

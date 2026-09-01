@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEXUS STUDIO - Dashboard</title>
+<style>
+body{font-family:Arial;background:#0a0a0a;color:#fff;padding:20px}
+h1{color:#25D366} .card{background:#1a1a1a;padding:15px;border-radius:12px;margin:10px 0;display:flex;justify-content:space-between;align-items:center}
+a{color:#25D366;text-decoration:none;font-weight:bold} .btn{background:#25D366;color:#fff;padding:8px 15px;border-radius:8px}
+#lista{margin-top:20px}
+</style>
+</head>
+<body>
+<h1>🚀 NEXUS STUDIO Dashboard</h1>
+<p>📁 Pasta: ~/workspace/html/html_gerados</p>
+<a href="/" class="btn">⬅️ Voltar pro Gerador</a>
+<div id="lista">Carregando...</div>
+<script>
+fetch('./index.json').then(r=>r.json()).then(files=>{
+  const div=document.getElementById('lista');
+  if(!files.length){div.innerHTML='<p>Nenhum HTML ainda</p>';return;}
+  div.innerHTML=files.reverse().map(f=>`
+    <div class="card">
+      <span>📄 ${f}</span>
+      <span><a href="./${f}" target="_blank">Abrir</a> | <a href="https://wa.me/5555981011208?text=Olha%20esse%20link:%20${location.href}${f}" target="_blank">WhatsApp</a></span>
+    </div>`).join('');
+}).catch(()=>{
+  document.getElementById('lista').innerHTML='<p>index.json não encontrado, listando manual...</p>';
+});
+</script>
+</body>
+</html>

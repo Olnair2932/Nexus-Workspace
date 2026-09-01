@@ -1,0 +1,94 @@
+{
+    "sistema": "NEXUS HTML STUDIO",
+    "versao": "1.0",
+    "paginas": [
+        {
+            "arquivo": "nexus_20260901_025856.html",
+            "titulo": "Desodorante Masculino",
+            "preco": "R$50,00",
+            "descricao": "Desodorante masculino \nClub 6 intenso",
+            "imagem": "/uploads/1788242330555_IMG-20260830-WA0006.jpg",
+            "criado_em": "2026-09-01T05:58:56.248Z"
+        },
+        {
+            "arquivo": "nexus_20260901_023811.html",
+            "titulo": "Desodorante masculino",
+            "preco": "R$ 55,00",
+            "descricao": "Desodorante masculino \nClub 6 intenso",
+            "imagem": "/uploads/1788241085970_IMG-20260830-WA0006.jpg",
+            "criado_em": "2026-09-01T05:38:11.982Z"
+        },
+        {
+            "arquivo": "nexus_20260901_020744.html",
+            "titulo": "Cereja Rouge",
+            "preco": "R$ 115,00",
+            "descricao": "Faça uma descrição persuativa para vender este produto boticário Cerveja Rouge Body Splash",
+            "imagem": "/uploads/1788239259809_5c175aaa-00b1-4fc9-b98b-e66d7eba01e5-nativa-spa-cereja-rouge-body-splash-frontal.jpg",
+            "criado_em": "2026-09-01T05:07:45.155Z"
+        },
+        {
+            "arquivo": "nexus_20260901_010553.html",
+            "titulo": "Cereja Rouge desodorante",
+            "preco": "R$ 103,00",
+            "descricao": "Faça uma descrição persuativa para vender este produto boticário Cereja Rouge 200 ml\nDesodorante Colônia.",
+            "imagem": "/uploads/1788235547879_IMG-20260830-WA0010.jpg",
+            "criado_em": "2026-09-01T04:05:53.745Z"
+        },
+        {
+            "arquivo": "nexus_20260831_181119.html",
+            "titulo": "Nativa SPA",
+            "preco": "R$ 115,00",
+            "descricao": "Faça uma descrição para vender este produto nativa SPA\nCom Extrato de Cereja",
+            "imagem": "/uploads/1788210647209_bc1e3a4d-adbb-47c4-a043-7eba0740eb23-bot-57829-nativa-spa-cereja-rouge-segredinh.jpg",
+            "criado_em": "2026-08-31T21:11:19.423Z"
+        },
+        {
+            "arquivo": "nexus_20260831_174303.html",
+            "titulo": "Body Splash Desodorante Colônia",
+            "preco": "R$ 103,00",
+            "descricao": "Faça uma descrição persuativa para vender este desodorante Body Splash Colônia.",
+            "imagem": "/uploads/1788208977561_IMG-20260830-WA0004.jpg",
+            "criado_em": "2026-08-31T20:43:03.322Z"
+        },
+        {
+            "arquivo": "nexus_20260831_042407.html",
+            "titulo": "body Splash",
+            "preco": "100,00",
+            "descricao": "Body Splash desodorante",
+            "imagem": "/uploads/1788161037938_93f697e9-2dbd-424d-80a1-ebf10bdebb8b-bot-57829-maos.jpg",
+            "criado_em": "2026-08-31T07:24:07.192Z"
+        },
+        {
+            "arquivo": "nexus_20260831_041850.html",
+            "titulo": "desodorante cereja rouge",
+            "preco": "80,00",
+            "descricao": "Desodorante cereja rouge",
+            "imagem": "/uploads/1788160722275_20260830_193345.jpg",
+            "criado_em": "2026-08-31T07:18:50.191Z"
+        },
+        {
+            "arquivo": "nexus_20260831_040225.html",
+            "titulo": "body splash",
+            "preco": "100,00",
+            "descricao": "Body Splash desodorante",
+            "imagem": "/uploads/1788159739806_93f697e9-2dbd-424d-80a1-ebf10bdebb8b-bot-57829-maos.jpg",
+            "criado_em": "2026-08-31T07:02:25.271Z"
+        },
+        {
+            "arquivo": "nexus_20260831_040027.html",
+            "titulo": "sandália feminina",
+            "preco": "R$ 50,00",
+            "descricao": "Vender está sandália feminina tamanho 36",
+            "imagem": "/uploads/1788159598086_2Q__.jpg",
+            "criado_em": "2026-08-31T07:00:27.434Z"
+        },
+        {
+            "arquivo": "nexus_20260831_035427.html",
+            "titulo": "sandália feminina",
+            "preco": "100,00",
+            "descricao": "Vender sandália feminina número 36",
+            "imagem": "/uploads/1788159260747_2Q__.jpg",
+            "criado_em": "2026-08-31T06:54:27.286Z"
+        }
+    ]
+}

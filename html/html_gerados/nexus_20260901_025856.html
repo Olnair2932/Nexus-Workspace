@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desodorante Club 6 Intenso | NEXUS HTML STUDIO</title>
+    <style>
+        :root { --wpp: #25D366; --dark: #2a3441; --meta: #6c2bd9; }
+        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background: #f4f4f9; }
+        .card { background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .img-container { width: 100%; overflow: hidden; border-radius: 15px; touch-action: manipulation; }
+        .img-container img { width: 100%; height: auto; transition: transform 0.3s ease; }
+        .img-container img:active { transform: scale(2); }
+        h1 { margin: 20px 0 10px; color: var(--dark); }
+        .preco { font-size: 24px; font-weight: bold; color: var(--meta); margin-bottom: 15px; }
+        .descricao { font-size: 15px; color: #666; margin-bottom: 20px; }
+        .btn { display: block; width: 100%; box-sizing: border-box; margin-top: 12px; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; border: none; cursor: pointer; color: white; text-decoration: none; }
+        .btn-wpp { background: var(--wpp); }
+        .btn-share { background: var(--dark); }
+        .btn-meta { background: var(--meta); }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="img-container">
+        <img src="/uploads/1788242330555_IMG-20260830-WA0006.jpg" alt="Club 6 Intenso">
+    </div>
+    
+    <h1 class="titulo">Desodorante Club 6 Intenso</h1>
+    <div class="preco">R$ 50,00</div>
+    
+    <div class="descricao">
+        O Club 6 Intenso é a escolha definitiva para o homem que não passa despercebido. Com uma fragrância marcante e sofisticada, este desodorante combina notas amadeiradas profundas com um toque de frescor que garante proteção e confiança durante todo o seu dia. Ideal para ocasiões especiais ou para o uso diário de quem deseja deixar sua marca por onde passa. Sinta a intensidade da perfumação que evolui na pele, proporcionando uma experiência sensorial única. Sua fórmula exclusiva foi desenvolvida para oferecer secagem rápida e um cuidado especial com a pele, evitando irritações e garantindo que você se sinta impecável, do primeiro ao último compromisso. Não é apenas um desodorante, é um acessório de estilo. ✨ Dúvidas? Fale com nossa assistente virtual e depois com a vendedora Kellen: (55) 98101-1208
+    </div>
+
+    <a href="https://wa.me/5555981011208?text=Olá%20Kellen%21%20Quero%20Club%206%20Intenso" class="btn btn-wpp">💬 Comprar pelo WhatsApp</a>
+    
+    <button class="btn btn-share" onclick="compartilhar()">📤 Compartilhar página</button>
+    
+    <button class="btn btn-meta" onclick="abrirMeta()">🤖 Falar com Atendimento Meta AI</button>
+</div>
+
+<script>
+    function compartilhar() {
+        if (navigator.share) {
+            navigator.share({ title: document.title, url: window.location.href }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => alert('Link copiado!'));
+        }
+    }
+
+    function abrirMeta() {
+        const nome = document.querySelector('h1')?.innerText || 'Produto';
+        const preco = document.querySelector('.preco')?.innerText || 'Consulte';
+        const desc = document.querySelector('.descricao')?.innerText || '';
+        const texto = `Olá! Tenho interesse no produto: ${nome} | Preço: ${preco} | Descrição: ${desc.substring(0,600)} | Link: ${location.href} | Kellen (55) 98101-1208 - Me mostre as vantagens?`;
+        const urlMeta = `https://wa.me/ais/867051314767696?s=5&text=${encodeURIComponent(texto)}`;
+        window.open(urlMeta, '_blank');
+    }
+</script>
+
+</body>
+</html>

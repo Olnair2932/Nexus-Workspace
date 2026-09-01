@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Body Splash - Oferta Exclusiva</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .product-card {
+            background: var(--card);
+            max-width: 400px;
+            width: 100%;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            cursor: zoom-in;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+        }
+
+        .product-image.zoomed {
+            transform: scale(2);
+            cursor: zoom-out;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 1.5rem; }
+        .price { font-size: 1.25rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; }
+        .description { margin-bottom: 20px; line-height: 1.5; color: #64748b; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn-whatsapp { background: #25d366; color: white; }
+        .btn-whatsapp:hover { background: #20bd5a; }
+        .btn-share { background: #e2e8f0; color: var(--text); }
+        .btn-share:hover { background: #cbd5e1; }
+    </style>
+</head>
+<body>
+
+<div class="product-card">
+    <div class="image-container" id="container">
+        <img src="/uploads/1788159739806_93f697e9-2dbd-424d-80a1-ebf10bdebb8b-bot-57829-maos.jpg" alt="Body Splash" class="product-image" id="productImage">
+    </div>
+    <h1>Body Splash</h1>
+    <div class="price">R$ 100,00</div>
+    <p class="description">Body Splash desodorante com fragrância envolvente e refrescante. Ideal para o uso diário.</p>
+    
+    
+    <button class="btn btn-share" id="shareBtn">Compartilhar página</button>
+</div>
+
+<script>
+    const img = document.getElementById('productImage');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        img.classList.toggle('zoomed');
+    }
+
+    // Double Click (Desktop)
+    img.addEventListener('dblclick', toggleZoom);
+
+    // Double Tap (Mobile)
+    img.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            toggleZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    // Share API
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+        const shareData = {
+            title: 'Body Splash',
+            text: 'Confira este produto incrível!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                console.log('Erro ao compartilhar');
+            }
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

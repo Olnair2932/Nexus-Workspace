@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desodorante Cereja Rouge | Oferta Especial</title>
+    <style>
+        :root {
+            --primary: #d6336c;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #e9ecef;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .product-card {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            background: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-in;
+        }
+
+        .product-image {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.3s ease;
+            touch-action: none;
+        }
+
+        .product-image.zoomed {
+            transform: scale(2);
+            cursor: zoom-out;
+        }
+
+        h1 { color: var(--dark); margin: 10px 0; font-size: 1.5rem; }
+        .price { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .description { color: #6c757d; margin-bottom: 25px; line-height: 1.6; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-whatsapp { background: #25d366; color: white; text-decoration: none; }
+        .btn-share { background: var(--dark); color: white; }
+        .btn:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+<div class="product-card">
+    <div class="image-container" id="container">
+        <img src="/uploads/1788160722275_20260830_193345.jpg" alt="Desodorante Cereja Rouge" class="product-image" id="productImg">
+    </div>
+    
+    <h1>Desodorante Cereja Rouge</h1>
+    <div class="price">R$ 80,00</div>
+    <p class="description">Fragrância marcante e proteção duradoura. Sinta a essência da cereja rouge em sua pele durante todo o dia.</p>
+    
+    
+    <button class="btn btn-share" id="shareBtn">Compartilhar página</button>
+</div>
+
+<script>
+    const img = document.getElementById('productImg');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        img.classList.toggle('zoomed');
+    }
+
+    // Desktop double click
+    img.addEventListener('dblclick', toggleZoom);
+
+    // Mobile double tap
+    img.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            toggleZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    // Share functionality
+    document.getElementById('shareBtn').addEventListener('click', () => {
+        const productData = {
+            title: "Desodorante Cereja Rouge",
+            text: "Confira este produto incrível!",
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(productData).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert("Link copiado para a área de transferência!");
+            });
+        }
+    });
+</script>
+
+
+<!-- NEXUS META AI - ATENDIMENTO -->
+<div class="nexus-meta-ai"
+     style="margin-top:10px;width:100%;box-sizing:border-box;">
+
+    <a
+        id="nexusMetaAI"
+        href="https://wa.me/ais/867051314767696?s=5"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="
+            display:block;
+            width:100%;
+            box-sizing:border-box;
+            padding:9px 12px;
+            border-radius:8px;
+            background:#6c2bd9;
+            color:#ffffff;
+            text-align:center;
+            text-decoration:none;
+            font-size:14px;
+            font-weight:600;
+            line-height:1.2;
+        "
+    >
+        🤖 Atendimento com Meta AI
+    </a>
+
+</div>
+
+<script>
+(function () {
+
+    const botao =
+        document.getElementById("nexusMetaAI");
+
+    if (!botao) return;
+
+    const mensagem =
+        "Olá! Tenho interesse no produto: desodorante cereja rouge - 80,00. Gostaria de saber mais sobre o produto, suas vantagens e como comprar. Também quero conhecer a loja oficial da Kellen no Boticário: https://minhaloja.boticario.com.br/kellenbittencourt?utm_source=app_divulgar_marca&utm_medium=divulgar_loja_boticario";
+
+    botao.addEventListener(
+        "click",
+        function () {
+
+            try {
+
+                if (
+                    navigator.clipboard &&
+                    navigator.clipboard.writeText
+                ) {
+
+                    navigator.clipboard.writeText(
+                        mensagem
+                    ).catch(function (erro) {
+
+                        console.log(
+                            "[NEXUS META AI] Falha ao copiar:",
+                            erro
+                        );
+
+                    });
+
+                } else {
+
+                    const area =
+                        document.createElement("textarea");
+
+                    area.value = mensagem;
+
+                    area.style.position = "fixed";
+                    area.style.left = "-9999px";
+
+                    document.body.appendChild(area);
+
+                    area.focus();
+                    area.select();
+
+                    try {
+                        document.execCommand("copy");
+                    } catch (erro) {
+                        console.log(
+                            "[NEXUS META AI] Falha ao copiar:",
+                            erro
+                        );
+                    }
+
+                    area.remove();
+
+                }
+
+            } catch (erro) {
+
+                console.log(
+                    "[NEXUS META AI] Erro:",
+                    erro
+                );
+
+            }
+
+        }
+    );
+
+})();
+</script>
+<!-- FIM NEXUS META AI -->
+
+</body>
+</html>

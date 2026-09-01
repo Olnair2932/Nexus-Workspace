@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandália Feminina - Oferta Especial</title>
+    <style>
+        :root {
+            --primary: #25d366;
+            --secondary: #333;
+            --bg: #f4f4f9;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .card {
+            background: white;
+            max-width: 400px;
+            width: 100%;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eee;
+            cursor: zoom-in;
+        }
+        .product-image {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+        }
+        .product-image.zoomed {
+            transform: scale(2);
+            cursor: zoom-out;
+        }
+        h1 { font-size: 1.5rem; margin: 20px 0 10px; color: var(--secondary); }
+        .price { font-size: 1.8rem; font-weight: bold; color: #e63946; margin-bottom: 10px; }
+        .desc { color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-bottom: 10px;
+            transition: opacity 0.2s;
+        }
+        .btn-whatsapp { background-color: var(--primary); color: white; }
+        .btn-share { background-color: #007bff; color: white; }
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="image-container" id="container">
+        <img src="/uploads/1788159260747_2Q__.jpg" alt="Sandália Feminina" class="product-image" id="productImg">
+    </div>
+    <h1>Sandália Feminina</h1>
+    <div class="price">R$ 100,00</div>
+    <p class="desc">Sandália feminina elegante e confortável, número 36. Perfeita para qualquer ocasião.</p>
+    
+    
+    <button class="btn btn-share" id="shareBtn">Compartilhar página</button>
+</div>
+
+<script>
+    const img = document.getElementById('productImg');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        img.classList.toggle('zoomed');
+    }
+
+    // Zoom para clique/toque
+    img.addEventListener('dblclick', toggleZoom);
+    img.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            toggleZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    // Compartilhamento
+    document.getElementById('shareBtn').addEventListener('click', () => {
+        const data = {
+            title: 'Sandália Feminina',
+            text: 'Confira esta oferta incrível de sandália!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(data).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

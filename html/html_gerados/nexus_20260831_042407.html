@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Body Splash - Oferta Especial</title>
+    <style>
+        :root {
+            --primary: #25d366;
+            --secondary: #6200ea;
+            --bg: #f4f7f6;
+            --text: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: #fff;
+            max-width: 400px;
+            width: 100%;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #eee;
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+        .image-container.zoomed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            background: rgba(0,0,0,0.9);
+            cursor: zoom-out;
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.3s ease;
+        }
+        .image-container.zoomed img {
+            transform: scale(2);
+        }
+        .info { padding: 20px 0; }
+        h1 { margin: 0 0 10px; font-size: 1.5rem; }
+        .price { font-size: 1.8rem; font-weight: bold; color: var(--secondary); margin-bottom: 10px; }
+        .desc { color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .btn-whatsapp { background: var(--primary); color: white; }
+        .btn-share { background: #333; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="image-container" id="productImage">
+        <img src="/uploads/1788161037938_93f697e9-2dbd-424d-80a1-ebf10bdebb8b-bot-57829-maos.jpg" alt="Body Splash">
+    </div>
+    
+    <div class="info">
+        <h1>Body Splash</h1>
+        <div class="price">R$ 100,00</div>
+        <p class="desc">Body Splash desodorante com fragrância envolvente e refrescante. Ideal para o uso diário.</p>
+        
+        <a href="https://wa.me/?text=Olá! Tenho interesse no produto: Body Splash por R$ 100,00" class="btn btn-whatsapp">Comprar pelo WhatsApp</a>
+        <button class="btn btn-share" id="shareBtn">Compartilhar página</button>
+    </div>
+</div>
+
+<script>
+    const container = document.getElementById('productImage');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        container.classList.toggle('zoomed');
+    }
+
+    // Double click (Desktop)
+    container.addEventListener('dblclick', toggleZoom);
+
+    // Double tap (Mobile)
+    container.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            toggleZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    // Share functionality
+    document.getElementById('shareBtn').addEventListener('click', () => {
+        const data = {
+            title: 'Body Splash',
+            text: 'Confira este produto incrível!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(data).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

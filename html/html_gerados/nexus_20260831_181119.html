@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nativa SPA - Extrato de Cereja</title>
+    <style>
+        :root {
+            --primary: #d63384;
+            --dark: #333;
+            --light: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .card {
+            background: white;
+            max-width: 500px;
+            width: 100%;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .img-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eee;
+        }
+        .product-img {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+        }
+        .product-img.zoomed {
+            transform: scale(2);
+            cursor: zoom-out;
+        }
+        h1 { color: var(--dark); margin: 10px 0; }
+        .price { font-size: 1.5rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .description { color: #666; line-height: 1.6; margin-bottom: 20px; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .btn-whatsapp { background: #25d366; color: white; }
+        .btn-share { background: #007bff; color: white; }
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="img-container">
+        <img src="/uploads/1788210647209_bc1e3a4d-adbb-47c4-a043-7eba0740eb23-bot-57829-nativa-spa-cereja-rouge-segredinh.jpg" 
+             alt="Nativa SPA Cereja" class="product-img" id="productImg">
+    </div>
+    <h1>Nativa SPA Cereja</h1>
+    <div class="price">R$ 115,00</div>
+    <p class="description">
+        Sinta a sofisticação e o toque aveludado na sua pele. Com o exclusivo extrato de cereja, o Nativa SPA oferece uma hidratação profunda e uma fragrância marcante que envolve seus sentidos. O segredo para uma pele radiante e perfumada todos os dias.
+    </p>
+    <a href="https://wa.me/5500000000000?text=Olá, tenho interesse no produto Nativa SPA - R$ 115,00" class="btn btn-whatsapp">Comprar pelo WhatsApp</a>
+    <button class="btn btn-share" id="shareBtn">Compartilhar página</button>
+</div>
+
+<script>
+    const img = document.getElementById('productImg');
+    let lastTap = 0;
+
+    function toggleZoom() {
+        img.classList.toggle('zoomed');
+    }
+
+    // Zoom para Desktop
+    img.addEventListener('dblclick', toggleZoom);
+
+    // Zoom para Mobile
+    img.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            toggleZoom();
+            e.preventDefault();
+        }
+        lastTap = currentTime;
+    });
+
+    // Compartilhamento
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+        const data = {
+            title: 'Nativa SPA - Cereja',
+            text: 'Confira este produto incrível!',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(data);
+            } catch (err) {
+                console.log('Erro ao compartilhar');
+            }
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copiado para a área de transferência!');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>
