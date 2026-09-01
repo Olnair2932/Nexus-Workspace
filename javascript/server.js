@@ -181,10 +181,37 @@ app.post("/api/html/atualizar", async (req, res) => {
         return res.json({ ok: true });
     }
     const resultado = await new Promise((resolve) => {
-        execFile("python3", [ferramentaDados, nomeSeguro, titulo, preco, descricao, imagem], { cwd: WORKSPACE, env: process.env, timeout: 120000, maxBuffer: 5 * 1024 * 1024 }, (erro, stdout, stderr) => {
-            resolve({ ok: !erro, stdout: stdout || "", stderr: stderr || "", erro: erro ? erro.message : "" });
+        const dadosAtualizacao = JSON.stringify({
+            arquivo: nomeSeguro,
+            titulo,
+            preco,
+            descricao,
+            imagem
         });
+
+        const processo = execFile(
+            "python3",
+            [ferramentaDados],
+            {
+                cwd: WORKSPACE,
+                env: process.env,
+                timeout: 120000,
+                maxBuffer: 10 * 1024 * 1024
+            },
+            (erro, stdout, stderr) => {
+                resolve({
+                    ok: !erro,
+                    stdout: stdout || "",
+                    stderr: stderr || "",
+                    erro: erro ? erro.message : ""
+                });
+            }
+        );
+
+        processo.stdin.write(dadosAtualizacao);
+        processo.stdin.end();
     });
+
     try { const dados = JSON.parse(resultado.stdout.trim()); return res.json(dados); }
     catch { return res.status(500).json({ ok: false, erro: "A ferramenta de atualização não retornou JSON válido.", stdout: resultado.stdout, stderr: resultado.stderr }); }
 });
