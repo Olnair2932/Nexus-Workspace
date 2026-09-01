@@ -150,36 +150,192 @@ document.addEventListener("DOMContentLoaded", carregarModoEdicao);
 if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", carregarModoEdicao, { once: true }); } else { carregarModoEdicao(); }
 
 async function salvarHTML() {
-    const parametros = new URLSearchParams(window.location.search); const arquivo = parametros.get("editar");
-    if (!arquivo) { alert("Nenhuma página está em modo de edição."); return; }
+    const parametros = new URLSearchParams(window.location.search);
+    const arquivo = parametros.get("editar");
+
+    if (!arquivo) {
+        alert("Nenhuma página está em modo de edição.");
+        return;
+    }
+
     const titulo = document.getElementById("produtoNome")?.value.trim() || "";
     const preco = document.getElementById("produtoPreco")?.value.trim() || "";
     const descricao = document.getElementById("produtoDescricao")?.value.trim() || "";
     const campoImagem = document.getElementById("produtoImagem");
     const botao = document.getElementById("btnSalvar");
-    if (!titulo) { alert("Informe o nome do produto."); return; }
-    if (botao) { botao.disabled = true; botao.textContent = "⏳ SALVANDO..."; }
+
+    if (!titulo) {
+        alert("Informe o nome do produto.");
+        return;
+    }
+
+    if (botao) {
+        botao.disabled = true;
+        botao.textContent = "⏳ SALVANDO...";
+    }
+
     try {
+        // ----------------------------------------------------
+        // Recupera os dados atuais para preservar a imagem
+        // caso nenhuma imagem nova seja selecionada.
+        // ----------------------------------------------------
         let imagem = "";
-        const respostaAtual = await fetch("/api/html/editar?arquivo=" + encodeURIComponent(arquivo));
-        if (respostaAtual.ok) { const dadosAtuais = await respostaAtual.json(); if (dadosAtuais.ok && dadosAtuais.pagina) imagem = dadosAtuais.pagina.imagem || ""; }
-        if (campoImagem && campoImagem.files && campoImagem.files.length > 0) {
-            const arquivoImagem = campoImagem.files[0]; const formulario = new FormData(); formulario.append("imagem", arquivoImagem);
-            if (botao) botao.textContent = "🖼️ ENVIANDO IMAGEM...";
-            const respostaUpload = await fetch("/api/html/upload", { method: "POST", body: formulario });
-            const dadosUpload = await respostaUpload.json();
-            if (!respostaUpload.ok ||!dadosUpload.ok) throw new Error(dadosUpload.erro || "Não foi possível enviar a imagem.");
-            imagem = dadosUpload.url;
+
+        const respostaAtual = await fetch(
+            "/api/html/editar?arquivo=" + encodeURIComponent(arquivo),
+            { cache: "no-store" }
+        );
+
+        const textoAtual = await respostaAtual.text();
+
+        let dadosAtuais = {};
+
+        try {
+            dadosAtuais = textoAtual ? JSON.parse(textoAtual) : {};
+        } catch (e) {
+            throw new Error(
+                "O servidor não retornou JSON válido ao carregar os dados atuais."
+            );
         }
-        if (botao) botao.textContent = "💾 SALVANDO DADOS...";
-        const resposta = await fetch("/api/html/atualizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ arquivo, titulo, preco, descricao, imagem }) });
-        const dados = await resposta.json();
-        if (!resposta.ok ||!dados.ok) throw new Error(dados.erro || "Não foi possível salvar.");
+
+        if (!respostaAtual.ok || !dadosAtuais.ok) {
+            throw new Error(
+                dadosAtuais.erro || "Não foi possível carregar os dados atuais."
+            );
+        }
+
+        if (dadosAtuais.pagina) {
+            imagem = dadosAtuais.pagina.imagem || "";
+        }
+
+        // ----------------------------------------------------
+        // NOVA IMAGEM:
+        // transforma o arquivo diretamente em Base64.
+        // Não utiliza /api/html/upload.
+        // ----------------------------------------------------
+        if (
+            campoImagem &&
+            campoImagem.files &&
+            campoImagem.files.length > 0
+        ) {
+            const arquivoImagem = campoImagem.files[0];
+
+            if (!arquivoImagem.type.startsWith("image/")) {
+                throw new Error("Selecione um arquivo de imagem válido.");
+            }
+
+            if (botao) {
+                botao.textContent = "🖼️ CONVERTENDO IMAGEM...";
+            }
+
+            imagem = await new Promise((resolve, reject) => {
+                const leitor = new FileReader();
+
+                leitor.onload = function () {
+                    const resultado = leitor.result;
+
+                    if (
+                        typeof resultado !== "string" ||
+                        !resultado.startsWith("data:image/")
+                    ) {
+                        reject(
+                            new Error(
+                                "Não foi possível converter a imagem para Base64."
+                            )
+                        );
+                        return;
+                    }
+
+                    resolve(resultado);
+                };
+
+                leitor.onerror = function () {
+                    reject(
+                        new Error(
+                            "Erro ao ler a imagem selecionada."
+                        )
+                    );
+                };
+
+                leitor.readAsDataURL(arquivoImagem);
+            });
+
+            // ------------------------------------------------
+            // Limite preventivo para o JSON.
+            // O server.js atualmente aceita 1 MB.
+            // ------------------------------------------------
+            if (imagem.length > 900000) {
+                throw new Error(
+                    "A imagem é muito grande para ser salva em Base64. " +
+                    "Escolha uma imagem menor."
+                );
+            }
+        }
+
+        // ----------------------------------------------------
+        // Salva HTML + dados + imagem Base64.
+        // ----------------------------------------------------
+        if (botao) {
+            botao.textContent = "💾 SALVANDO DADOS...";
+        }
+
+        const resposta = await fetch("/api/html/atualizar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                arquivo,
+                titulo,
+                preco,
+                descricao,
+                imagem
+            })
+        });
+
+        const textoResposta = await resposta.text();
+
+        let dados = {};
+
+        try {
+            dados = textoResposta ? JSON.parse(textoResposta) : {};
+        } catch (e) {
+            console.error(
+                "NEXUS: resposta não-JSON do servidor:",
+                textoResposta
+            );
+
+            throw new Error(
+                "O servidor não retornou JSON válido ao salvar."
+            );
+        }
+
+        if (!resposta.ok || !dados.ok) {
+            throw new Error(
+                dados.erro || "Não foi possível salvar."
+            );
+        }
+
         alert("✅ Alterações salvas com sucesso!");
-        if (botao) { botao.disabled = false; botao.textContent = "💾 SALVAR ALTERAÇÕES"; }
+
+        if (botao) {
+            botao.disabled = false;
+            botao.textContent = "💾 SALVAR ALTERAÇÕES";
+        }
+
         await carregarHTMLsGerados();
+
     } catch (erro) {
-        console.error("NEXUS: erro ao salvar HTML", erro); alert("❌ " + (erro.message || "Não foi possível salvar."));
-        if (botao) { botao.disabled = false; botao.textContent = "💾 SALVAR ALTERAÇÕES"; }
+        console.error("NEXUS: erro ao salvar HTML", erro);
+
+        alert(
+            "❌ " +
+            (erro.message || "Não foi possível salvar.")
+        );
+
+        if (botao) {
+            botao.disabled = false;
+            botao.textContent = "💾 SALVAR ALTERAÇÕES";
+        }
     }
 }
