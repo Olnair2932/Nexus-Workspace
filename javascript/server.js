@@ -25,6 +25,86 @@ const TOOLS_DIR = path.join(__dirname, "ferramentas");
 const IA_TOOL = path.join(TOOLS_DIR, "nexus_ia.js");
 const SHELL_TOOL = path.join(TOOLS_DIR, "nexus_shell.js");
 
+const FIREBASE_SYNC_TOOL = path.join(
+  PYTHON_DIR,
+  "ferramentas",
+  "nexus_firebase_sync.py"
+);
+
+async function sincronizarHTMLFirebase(nomeArquivo) {
+  try {
+    if (!nomeArquivo) {
+      return {
+        ok: false,
+        erro: "Nome do HTML não informado para sincronização."
+      };
+    }
+
+    if (!fs.existsSync(FIREBASE_SYNC_TOOL)) {
+      return {
+        ok: false,
+        erro: "Ferramenta nexus_firebase_sync.py não encontrada."
+      };
+    }
+
+    const resultado = await new Promise((resolve) => {
+      execFile(
+        "python3",
+        [FIREBASE_SYNC_TOOL, "salvar", path.basename(nomeArquivo)],
+        {
+          cwd: WORKSPACE,
+          env: process.env,
+          timeout: 120000,
+          maxBuffer: 10 * 1024 * 1024
+        },
+        (erro, stdout, stderr) => {
+          resolve({
+            ok: !erro,
+            stdout: stdout || "",
+            stderr: stderr || "",
+            erro: erro ? erro.message : ""
+          });
+        }
+      );
+    });
+
+    if (!resultado.ok) {
+      console.error(
+        "[NEXUS FIREBASE] Falha ao sincronizar:",
+        resultado.stderr || resultado.erro
+      );
+
+      return {
+        ok: false,
+        erro: resultado.stderr || resultado.erro || "Falha na sincronização Firebase.",
+        stdout: resultado.stdout
+      };
+    }
+
+    console.log(
+      "[NEXUS FIREBASE]",
+      resultado.stdout.trim() || "HTML sincronizado."
+    );
+
+    return {
+      ok: true,
+      mensagem: resultado.stdout.trim()
+    };
+
+  } catch (erro) {
+    console.error(
+      "[NEXUS FIREBASE] Erro:",
+      erro.message
+    );
+
+    return {
+      ok: false,
+      erro: erro.message
+    };
+  }
+}
+
+
 // CRIA PASTAS BLINDADAS ~/workspace
 for (const dir of [HTML_DIR, PUBLIC_DIR, GERADOS_DIR, UPLOADS_DIR, PYTHON_DIR, TOOLS_DIR]) {
     fs.mkdirSync(dir, { recursive: true });
@@ -212,8 +292,32 @@ app.post("/api/html/atualizar", async (req, res) => {
         processo.stdin.end();
     });
 
-    try { const dados = JSON.parse(resultado.stdout.trim()); return res.json(dados); }
-    catch { return res.status(500).json({ ok: false, erro: "A ferramenta de atualização não retornou JSON válido.", stdout: resultado.stdout, stderr: resultado.stderr }); }
+    try {
+        const dados = JSON.parse(resultado.stdout.trim());
+
+        if (!dados.ok) {
+            return res.json(dados);
+        }
+
+        const firebase = await sincronizarHTMLFirebase(nomeSeguro);
+
+        return res.json({
+            ...dados,
+            firebase: {
+                sincronizado: firebase.ok,
+                mensagem: firebase.mensagem || "",
+                erro: firebase.ok ? "" : (firebase.erro || "")
+            }
+        });
+
+    } catch {
+        return res.status(500).json({
+            ok: false,
+            erro: "A ferramenta de atualização não retornou JSON válido.",
+            stdout: resultado.stdout,
+            stderr: resultado.stderr
+        });
+    }
 });
 
 // GERAR HTML COM GEMINI 3.1 LITE
@@ -263,7 +367,24 @@ app.post("/api/html/gerar", async (req, res) => {
     indice.paginas.unshift({ arquivo: nomeArquivo, titulo: nome, preco, descricao, imagem, criado_em: new Date().toISOString() });
     fs.writeFileSync(indexFile, JSON.stringify(indice, null, 2), "utf-8");
 
-    return res.json({ ok: true, arquivo: nomeArquivo, url: "/html_gerados/" + nomeArquivo, titulo: nome });
+    // ========================================================
+    // SINCRONIZAÇÃO AUTOMÁTICA COM FIREBASE
+    // O HTML e o index.json já foram salvos antes desta etapa.
+    // ========================================================
+
+    const firebase = await sincronizarHTMLFirebase(nomeArquivo);
+
+    return res.json({
+        ok: true,
+        arquivo: nomeArquivo,
+        url: "/html_gerados/" + nomeArquivo,
+        titulo: nome,
+        firebase: {
+            sincronizado: firebase.ok,
+            mensagem: firebase.mensagem || "",
+            erro: firebase.ok ? "" : (firebase.erro || "")
+        }
+    });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
