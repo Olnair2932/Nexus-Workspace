@@ -25,6 +25,100 @@ const TOOLS_DIR = path.join(__dirname, "ferramentas");
 const IA_TOOL = path.join(TOOLS_DIR, "nexus_ia.js");
 const SHELL_TOOL = path.join(TOOLS_DIR, "nexus_shell.js");
 
+const FIREBASE_RESTORE_TOOL = path.join(
+  PYTHON_DIR,
+  "ferramentas",
+  "nexus_firebase_sync.py"
+);
+
+async function restaurarHTMLsFirebase() {
+  try {
+    if (!fs.existsSync(FIREBASE_RESTORE_TOOL)) {
+      console.error(
+        "[NEXUS FIREBASE] Ferramenta de restauração não encontrada:",
+        FIREBASE_RESTORE_TOOL
+      );
+
+      return {
+        ok: false,
+        erro: "nexus_firebase_sync.py não encontrado."
+      };
+    }
+
+    console.log("============================================");
+    console.log("☁️ NEXUS — RESTAURAÇÃO FIREBASE");
+    console.log("============================================");
+    console.log("🔄 Verificando HTMLs salvos no Firebase...");
+
+    const resultado = await new Promise((resolve) => {
+      execFile(
+        "python3",
+        [FIREBASE_RESTORE_TOOL, "restaurar_todos"],
+        {
+          cwd: WORKSPACE,
+          env: process.env,
+          timeout: 180000,
+          maxBuffer: 30 * 1024 * 1024
+        },
+        (erro, stdout, stderr) => {
+          resolve({
+            ok: !erro,
+            stdout: stdout || "",
+            stderr: stderr || "",
+            erro: erro ? erro.message : ""
+          });
+        }
+      );
+    });
+
+    if (resultado.stdout) {
+      console.log(
+        "[NEXUS FIREBASE RESTORE]",
+        resultado.stdout.trim()
+      );
+    }
+
+    if (!resultado.ok) {
+      console.error(
+        "[NEXUS FIREBASE] Restauração não concluída:",
+        resultado.stderr || resultado.erro
+      );
+
+      console.log(
+        "⚠️ O NEXUS continuará iniciando normalmente."
+      );
+
+      return {
+        ok: false,
+        erro: resultado.stderr || resultado.erro
+      };
+    }
+
+    console.log("✅ Restauração Firebase concluída.");
+
+    return {
+      ok: true,
+      mensagem: resultado.stdout.trim()
+    };
+
+  } catch (erro) {
+    console.error(
+      "[NEXUS FIREBASE] Erro durante restauração:",
+      erro.message
+    );
+
+    console.log(
+      "⚠️ O NEXUS continuará iniciando normalmente."
+    );
+
+    return {
+      ok: false,
+      erro: erro.message
+    };
+  }
+}
+
+
 const FIREBASE_SYNC_TOOL = path.join(
   PYTHON_DIR,
   "ferramentas",
@@ -387,10 +481,32 @@ app.post("/api/html/gerar", async (req, res) => {
     });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`✅ NEXUS STUDIO gemini-3.1-flash-lite rodando http://127.0.0.1:${PORT}`);
-    console.log(`WORKSPACE=${WORKSPACE}`);
-    console.log(`PUBLIC=${PUBLIC_DIR}`);
-    console.log(`GERADOS=${GERADOS_DIR}`);
-    console.log(`UPLOADS=${UPLOADS_DIR}`);
+async function iniciarNexus() {
+    console.log("");
+    console.log("============================================");
+    console.log("🚀 INICIANDO NEXUS HTML STUDIO");
+    console.log("============================================");
+
+    // --------------------------------------------------------
+    // RESTAURAÇÃO AUTOMÁTICA DOS HTMLs DO FIREBASE
+    // --------------------------------------------------------
+    await restaurarHTMLsFirebase();
+
+    // --------------------------------------------------------
+    // INICIA O SERVIDOR SOMENTE APÓS A RESTAURAÇÃO
+    // --------------------------------------------------------
+    app.listen(PORT, "0.0.0.0", () => {
+        console.log(`✅ NEXUS STUDIO gemini-3.1-flash-lite rodando http://127.0.0.1:${PORT}`);
+        console.log(`WORKSPACE=${WORKSPACE}`);
+        console.log(`PUBLIC=${PUBLIC_DIR}`);
+        console.log(`GERADOS=${GERADOS_DIR}`);
+        console.log(`UPLOADS=${UPLOADS_DIR}`);
+        console.log("☁️ Firebase: restauração automática habilitada.");
+        console.log("============================================");
+    });
+}
+
+iniciarNexus().catch((erro) => {
+    console.error("❌ Erro fatal ao iniciar o NEXUS:", erro);
+    process.exit(1);
 });
