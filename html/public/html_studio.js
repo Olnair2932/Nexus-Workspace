@@ -256,81 +256,109 @@ async function salvarHTML() {
                 ).toFixed(2)
             });
 
-            imagem = await new Promise((resolve, reject) => {
-                const leitor = new FileReader();
+            imagem = await (async function () {
+                /*
+                 * NEXUS HTML STUDIO
+                 * Leitura robusta de imagem no Android.
+                 *
+                 * Em vez de FileReader.readAsDataURL(), usamos
+                 * URL.createObjectURL() + fetch() + ArrayBuffer.
+                 * Isso evita falhas comuns ao selecionar imagens
+                 * pela galeria/gerenciador de arquivos do Android.
+                 */
 
-                leitor.onload = function (evento) {
-                    try {
-                        const resultado =
-                            evento &&
-                            evento.target
-                                ? evento.target.result
-                                : leitor.result;
-
-                        if (
-                            typeof resultado !== "string" ||
-                            !resultado.startsWith("data:image/")
-                        ) {
-                            reject(
-                                new Error(
-                                    "Não foi possível converter a imagem para Base64."
-                                )
-                            );
-                            return;
-                        }
-
-                        console.log(
-                            "NEXUS: imagem convertida para Base64:",
-                            resultado.length,
-                            "caracteres"
-                        );
-
-                        resolve(resultado);
-
-                    } catch (erro) {
-                        reject(erro);
-                    }
-                };
-
-                leitor.onerror = function (evento) {
-                    console.error(
-                        "NEXUS: erro FileReader:",
-                        evento,
-                        leitor.error
-                    );
-
-                    reject(
-                        new Error(
-                            "O navegador não conseguiu ler a imagem selecionada."
-                        )
-                    );
-                };
-
-                leitor.onabort = function () {
-                    reject(
-                        new Error(
-                            "A leitura da imagem foi interrompida."
-                        )
-                    );
-                };
-
-                leitor.onloadend = function () {
-                    console.log(
-                        "NEXUS: leitura da imagem finalizada."
-                    );
-                };
+                let objectUrl = "";
 
                 try {
-                    leitor.readAsDataURL(arquivoImagem);
-                } catch (erro) {
-                    reject(
-                        new Error(
-                            "Não foi possível iniciar a leitura da imagem: " +
-                            erro.message
-                        )
+                    objectUrl = URL.createObjectURL(arquivoImagem);
+
+                    console.log("NEXUS: lendo imagem via ObjectURL:", {
+                        nome: arquivoImagem.name,
+                        tipo: arquivoImagem.type,
+                        tamanho: arquivoImagem.size
+                    });
+
+                    const respostaImagem = await fetch(objectUrl);
+
+                    if (!respostaImagem.ok) {
+                        throw new Error(
+                            "Não foi possível acessar o arquivo de imagem."
+                        );
+                    }
+
+                    const blob = await respostaImagem.blob();
+
+                    if (!blob || !blob.size) {
+                        throw new Error(
+                            "A imagem selecionada está vazia ou não pôde ser lida."
+                        );
+                    }
+
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const bytes = new Uint8Array(arrayBuffer);
+
+                    /*
+                     * Conversão Base64 em blocos.
+                     * Evita estourar o limite de argumentos do
+                     * String.fromCharCode() em imagens grandes.
+                     */
+                    let binario = "";
+                    const TAMANHO_BLOCO = 8192;
+
+                    for (
+                        let i = 0;
+                        i < bytes.length;
+                        i += TAMANHO_BLOCO
+                    ) {
+                        const bloco = bytes.subarray(
+                            i,
+                            Math.min(i + TAMANHO_BLOCO, bytes.length)
+                        );
+
+                        binario += String.fromCharCode(...bloco);
+                    }
+
+                    const base64 = btoa(binario);
+
+                    const mime =
+                        blob.type ||
+                        arquivoImagem.type ||
+                        "application/octet-stream";
+
+                    const resultado =
+                        "data:" + mime + ";base64," + base64;
+
+                    if (!resultado.startsWith("data:image/")) {
+                        throw new Error(
+                            "O arquivo selecionado não é uma imagem válida."
+                        );
+                    }
+
+                    console.log(
+                        "NEXUS: imagem convertida para Base64:",
+                        resultado.length,
+                        "caracteres"
                     );
+
+                    return resultado;
+
+                } catch (erro) {
+                    console.error(
+                        "NEXUS: falha ao ler imagem:",
+                        erro
+                    );
+
+                    throw new Error(
+                        "Não foi possível ler a imagem selecionada. " +
+                        "Tente escolher a imagem novamente pela galeria."
+                    );
+
+                } finally {
+                    if (objectUrl) {
+                        URL.revokeObjectURL(objectUrl);
+                    }
                 }
-            });
+            })();
 
             // O server.js aceita JSON de até 15 MB.
             // Base64 aumenta o tamanho aproximadamente 33%.
