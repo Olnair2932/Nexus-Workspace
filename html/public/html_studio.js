@@ -210,9 +210,9 @@ async function salvarHTML() {
 
         // ----------------------------------------------------
         // NOVA IMAGEM:
-        // transforma o arquivo diretamente em Base64.
-        // Não utiliza /api/html/upload.
+        // Converte o arquivo diretamente para Base64.
         // ----------------------------------------------------
+
         if (
             campoImagem &&
             campoImagem.files &&
@@ -220,53 +220,123 @@ async function salvarHTML() {
         ) {
             const arquivoImagem = campoImagem.files[0];
 
-            if (!arquivoImagem.type.startsWith("image/")) {
-                throw new Error("Selecione um arquivo de imagem válido.");
+            const LIMITE_IMAGEM = 15 * 1024 * 1024;
+
+            if (
+                !arquivoImagem.type ||
+                !arquivoImagem.type.startsWith("image/")
+            ) {
+                throw new Error(
+                    "Selecione um arquivo de imagem válido."
+                );
+            }
+
+            if (arquivoImagem.size > LIMITE_IMAGEM) {
+                const tamanhoMB = (
+                    arquivoImagem.size / (1024 * 1024)
+                ).toFixed(2);
+
+                throw new Error(
+                    "A imagem possui " +
+                    tamanhoMB +
+                    " MB. O limite máximo é de 15 MB por imagem."
+                );
             }
 
             if (botao) {
                 botao.textContent = "🖼️ CONVERTENDO IMAGEM...";
             }
 
+            console.log("NEXUS: imagem selecionada:", {
+                nome: arquivoImagem.name,
+                tipo: arquivoImagem.type,
+                tamanho: arquivoImagem.size,
+                tamanhoMB: (
+                    arquivoImagem.size / (1024 * 1024)
+                ).toFixed(2)
+            });
+
             imagem = await new Promise((resolve, reject) => {
                 const leitor = new FileReader();
 
-                leitor.onload = function () {
-                    const resultado = leitor.result;
+                leitor.onload = function (evento) {
+                    try {
+                        const resultado =
+                            evento &&
+                            evento.target
+                                ? evento.target.result
+                                : leitor.result;
 
-                    if (
-                        typeof resultado !== "string" ||
-                        !resultado.startsWith("data:image/")
-                    ) {
-                        reject(
-                            new Error(
-                                "Não foi possível converter a imagem para Base64."
-                            )
+                        if (
+                            typeof resultado !== "string" ||
+                            !resultado.startsWith("data:image/")
+                        ) {
+                            reject(
+                                new Error(
+                                    "Não foi possível converter a imagem para Base64."
+                                )
+                            );
+                            return;
+                        }
+
+                        console.log(
+                            "NEXUS: imagem convertida para Base64:",
+                            resultado.length,
+                            "caracteres"
                         );
-                        return;
-                    }
 
-                    resolve(resultado);
+                        resolve(resultado);
+
+                    } catch (erro) {
+                        reject(erro);
+                    }
                 };
 
-                leitor.onerror = function () {
+                leitor.onerror = function (evento) {
+                    console.error(
+                        "NEXUS: erro FileReader:",
+                        evento,
+                        leitor.error
+                    );
+
                     reject(
                         new Error(
-                            "Erro ao ler a imagem selecionada."
+                            "O navegador não conseguiu ler a imagem selecionada."
                         )
                     );
                 };
 
-                leitor.readAsDataURL(arquivoImagem);
+                leitor.onabort = function () {
+                    reject(
+                        new Error(
+                            "A leitura da imagem foi interrompida."
+                        )
+                    );
+                };
+
+                leitor.onloadend = function () {
+                    console.log(
+                        "NEXUS: leitura da imagem finalizada."
+                    );
+                };
+
+                try {
+                    leitor.readAsDataURL(arquivoImagem);
+                } catch (erro) {
+                    reject(
+                        new Error(
+                            "Não foi possível iniciar a leitura da imagem: " +
+                            erro.message
+                        )
+                    );
+                }
             });
 
-            // ------------------------------------------------
-            // Limite preventivo para o JSON.
-            // O server.js atualmente aceita 1 MB.
-            // ------------------------------------------------
-            if (imagem.length > 900000) {
+            // O server.js aceita JSON de até 15 MB.
+            // Base64 aumenta o tamanho aproximadamente 33%.
+            if (imagem.length > 14000000) {
                 throw new Error(
-                    "A imagem é muito grande para ser salva em Base64. " +
+                    "A imagem é muito grande para ser enviada. " +
                     "Escolha uma imagem menor."
                 );
             }
