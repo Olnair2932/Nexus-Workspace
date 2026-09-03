@@ -125,8 +125,102 @@ const FIREBASE_SYNC_TOOL = path.join(
   "nexus_firebase_sync.py"
 );
 
+
+function incorporarImagensNoHTML(nomeArquivo) {
+  try {
+    const caminhoHTML = path.join(GERADOS_DIR, path.basename(nomeArquivo));
+
+    if (!fs.existsSync(caminhoHTML)) {
+      console.log("[NEXUS IMAGEM] HTML não encontrado:", caminhoHTML);
+      return { ok: false, erro: "HTML não encontrado." };
+    }
+
+    let html = fs.readFileSync(caminhoHTML, "utf-8");
+    let alteracoes = 0;
+
+    html = html.replace(
+      /(<img\b[^>]*\bsrc=["'])(\/uploads\/([^"']+))(["'][^>]*>)/gi,
+      (trecho, inicio, url, nomeImagem, fim) => {
+        try {
+          const nomeSeguro = path.basename(decodeURIComponent(nomeImagem));
+          const caminhoImagem = path.join(UPLOADS_DIR, nomeSeguro);
+
+          if (!fs.existsSync(caminhoImagem)) {
+            console.log(
+              "[NEXUS IMAGEM] Arquivo não encontrado:",
+              caminhoImagem
+            );
+            return trecho;
+          }
+
+          const extensao = path.extname(nomeSeguro).toLowerCase();
+
+          const tipos = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".svg": "image/svg+xml"
+          };
+
+          const mime = tipos[extensao] || "application/octet-stream";
+
+          const dados = fs.readFileSync(caminhoImagem);
+          const base64 = dados.toString("base64");
+          const dataURI = `data:${mime};base64,${base64}`;
+
+          alteracoes++;
+
+          console.log(
+            `[NEXUS IMAGEM] Incorporada: ${nomeSeguro} (${dados.length} bytes)`
+          );
+
+          return inicio + dataURI + fim;
+        } catch (erro) {
+          console.error(
+            "[NEXUS IMAGEM] Erro ao incorporar imagem:",
+            erro.message
+          );
+          return trecho;
+        }
+      }
+    );
+
+    fs.writeFileSync(caminhoHTML, html, "utf-8");
+
+    console.log(
+      `[NEXUS IMAGEM] ${alteracoes} imagem(ns) incorporada(s) em ${path.basename(nomeArquivo)}`
+    );
+
+    return {
+      ok: true,
+      alteracoes
+    };
+  } catch (erro) {
+    console.error(
+      "[NEXUS IMAGEM] Falha:",
+      erro.message
+    );
+
+    return {
+      ok: false,
+      erro: erro.message
+    };
+  }
+}
+
 async function sincronizarHTMLFirebase(nomeArquivo) {
   try {
+    const imagemPersistida = incorporarImagensNoHTML(nomeArquivo);
+
+    if (!imagemPersistida.ok) {
+      console.error(
+        "[NEXUS FIREBASE] Não foi possível preparar as imagens:",
+        imagemPersistida.erro
+      );
+    }
+
     if (!nomeArquivo) {
       return {
         ok: false,
