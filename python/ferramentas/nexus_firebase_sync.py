@@ -9,6 +9,7 @@ import hashlib
 import subprocess
 import tempfile
 import urllib.request
+import urllib.parse
 import urllib.error
 from pathlib import Path
 from datetime import datetime
