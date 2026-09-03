@@ -712,6 +712,145 @@ def teste():
     return True
 
 
+
+# ============================================================
+# RESTAURAR TODOS OS HTMLs DO FIREBASE
+# ============================================================
+
+def restaurar_todos():
+    """
+    Recupera todos os HTMLs armazenados em:
+    nexus/html_gerados
+
+    Restaura:
+    - arquivos .html
+    - index.json
+    """
+
+    if not is_render():
+        print("ℹ️ Ambiente local detectado.")
+        print("A restauração automática ocorre somente no Render.")
+        return True
+
+    token = obter_token()
+
+    if not token:
+        print("❌ Não foi possível autenticar no Firebase.")
+        return False
+
+    print("☁️ Consultando HTMLs no Firebase...")
+
+    ok, resposta = requisicao_firebase(
+        firebase_url(),
+        token=token
+    )
+
+    if not ok:
+        print("❌ Falha ao consultar Firebase.")
+        print(
+            json.dumps(
+                resposta,
+                ensure_ascii=False,
+                indent=2
+            )
+        )
+        return False
+
+    if not resposta:
+        print("📭 Nenhum HTML encontrado no Firebase.")
+        return True
+
+    if not isinstance(resposta, dict):
+        print("❌ Resposta inesperada do Firebase.")
+        return False
+
+    paginas = []
+    restaurados = 0
+    ignorados = 0
+
+    HTML_DIR.mkdir(parents=True, exist_ok=True)
+
+    for chave, registro in resposta.items():
+
+        if not isinstance(registro, dict):
+            ignorados += 1
+            continue
+
+        nome = registro.get("arquivo") or f"{chave}.html"
+
+        if not isinstance(nome, str):
+            ignorados += 1
+            continue
+
+        nome = nome.strip()
+
+        if not nome.endswith(".html"):
+            nome += ".html"
+
+        try:
+            nome = nome_seguro(nome)
+        except Exception:
+            ignorados += 1
+            continue
+
+        conteudo = registro.get("conteudo", "")
+
+        if not isinstance(conteudo, str) or not conteudo.strip():
+            ignorados += 1
+            print(f"⚠️ Ignorado sem conteúdo: {nome}")
+            continue
+
+        caminho = HTML_DIR / nome
+
+        caminho.write_text(
+            conteudo,
+            encoding="utf-8"
+        )
+
+        pagina = {
+            "arquivo": nome,
+            "titulo": registro.get("titulo", ""),
+            "preco": registro.get("preco", ""),
+            "descricao": registro.get("descricao", ""),
+            "imagem": registro.get("imagem", ""),
+            "criado_em": registro.get(
+                "criado_em",
+                datetime.now().isoformat()
+            )
+        }
+
+        paginas.append(pagina)
+        restaurados += 1
+
+        print(f"✅ Restaurado: {nome}")
+
+    index_file = HTML_DIR / "index.json"
+
+    indice = {
+        "paginas": paginas
+    }
+
+    index_file.write_text(
+        json.dumps(
+            indice,
+            ensure_ascii=False,
+            indent=2
+        ),
+        encoding="utf-8"
+    )
+
+    print()
+    print("============================================")
+    print("☁️ RESTAURAÇÃO FIREBASE CONCLUÍDA")
+    print("============================================")
+    print(f"✅ HTMLs restaurados: {restaurados}")
+    print(f"⚠️ Registros ignorados: {ignorados}")
+    print(f"📄 index.json reconstruído: {index_file}")
+    print("============================================")
+
+    return True
+
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -756,6 +895,10 @@ def main():
             if salvar(sys.argv[2])
             else 1
         )
+
+    if comando == "restaurar_todos":
+
+        return 0 if restaurar_todos() else 1
 
     ajuda()
 
