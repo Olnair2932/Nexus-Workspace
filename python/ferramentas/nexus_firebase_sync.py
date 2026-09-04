@@ -622,6 +622,56 @@ def salvar(nome):
 
 
 # ============================================================
+# EXCLUSÃO
+# ============================================================
+
+def excluir(nome):
+
+    if not is_render():
+        print("ℹ️ Exclusão Firebase ignorada no Termux.")
+        print("O acesso será realizado no Render.")
+        return True
+
+    nome = nome_seguro(nome)
+
+    if not nome or not nome.lower().endswith(".html"):
+        print("❌ Nome de arquivo HTML inválido.")
+        return False
+
+    chave = nome[:-5]
+
+    token = obter_token()
+
+    if not token:
+        print("❌ Não foi possível autenticar no Firebase.")
+        return False
+
+    ok, resposta = requisicao_firebase(
+        firebase_url(chave),
+        metodo="DELETE",
+        token=token
+    )
+
+    if not ok:
+        print("❌ Falha ao excluir HTML do Firebase.")
+        print(
+            json.dumps(
+                resposta,
+                ensure_ascii=False,
+                indent=2
+            )
+        )
+        return False
+
+    print("🗑️ HTML excluído do Firebase.")
+    print(f"Arquivo: {nome}")
+    print(f"Nó: {FIREBASE_ROOT}/{chave}")
+
+    return True
+
+
+
+# ============================================================
 # TESTE
 # ============================================================
 
