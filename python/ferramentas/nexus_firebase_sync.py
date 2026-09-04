@@ -30,27 +30,15 @@ from datetime import datetime
 
 def detectar_base_dir():
 
-    render_dir = os.environ.get("RENDER_PROJECT_DIR")
-
-    if render_dir:
-        return Path(render_dir).resolve()
-
+    # No Render, o workspace real do NEXUS é /opt/render/project/src.
     caminho_render = Path("/opt/render/project/src")
 
     if caminho_render.exists():
         return caminho_render
 
+    # Fora do Render, usa a raiz do workspace a partir deste arquivo.
     return Path(__file__).resolve().parents[2]
 
-
-print("=== NEXUS FIREBASE PATH DIAGNOSTIC ===")
-print("SYNC FILE =", Path(__file__).resolve())
-print("RENDER_PROJECT_DIR =", repr(os.environ.get("RENDER_PROJECT_DIR")))
-print("RENDER =", repr(os.environ.get("RENDER")))
-print("RENDER_SERVICE_ID =", repr(os.environ.get("RENDER_SERVICE_ID")))
-print("BASE_DIR =", detectar_base_dir())
-print("HTML_DIR =", detectar_base_dir() / "html" / "html_gerados")
-print("======================================")
 
 BASE_DIR = detectar_base_dir()
 
