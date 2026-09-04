@@ -43,6 +43,15 @@ def detectar_base_dir():
     return Path(__file__).resolve().parents[2]
 
 
+print("=== NEXUS FIREBASE PATH DIAGNOSTIC ===")
+print("SYNC FILE =", Path(__file__).resolve())
+print("RENDER_PROJECT_DIR =", repr(os.environ.get("RENDER_PROJECT_DIR")))
+print("RENDER =", repr(os.environ.get("RENDER")))
+print("RENDER_SERVICE_ID =", repr(os.environ.get("RENDER_SERVICE_ID")))
+print("BASE_DIR =", detectar_base_dir())
+print("HTML_DIR =", detectar_base_dir() / "html" / "html_gerados")
+print("======================================")
+
 BASE_DIR = detectar_base_dir()
 
 HTML_DIR = BASE_DIR / "html" / "html_gerados"
