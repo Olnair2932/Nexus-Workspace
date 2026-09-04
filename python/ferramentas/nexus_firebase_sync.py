@@ -5,33 +5,28 @@ import sys
 import json
 import time
 import base64
+import hashlib
 import subprocess
 import tempfile
 import urllib.request
 import urllib.parse
 import urllib.error
-
 from pathlib import Path
 from datetime import datetime
 
-
 # ============================================================
-# NEXUS HTML STUDIO
-# SINCRONIZAÇÃO FIREBASE
+# NEXUS FIREBASE SYNC
+# Sincroniza SOMENTE os HTML gerados pelo NEXUS.
 #
-# IMPORTANTE:
-# O nó antigo:
+# Render:
+#   usa FIREBASE_SERVICE_ACCOUNT_JSON
 #
-#   nexus/html_gerados
+# Termux:
+#   não exige Firebase.
 #
-# pertence a outro sistema e NÃO será alterado.
-#
-# O NEXUS HTML STUDIO usa exclusivamente:
-#
-#   nexus/html_studio
-#
+# Firebase:
+#   /nexus/html_gerados/
 # ============================================================
-
 
 def detectar_base_dir():
 
@@ -50,45 +45,27 @@ def detectar_base_dir():
 
 BASE_DIR = detectar_base_dir()
 
-
-# ============================================================
-# DIRETÓRIOS
-# ============================================================
-
 HTML_DIR = BASE_DIR / "html" / "html_gerados"
-
-
-# ============================================================
-# FIREBASE
-# ============================================================
 
 FIREBASE_DATABASE_URL = os.environ.get(
     "FIREBASE_DATABASE_URL",
     "https://finance-master-629d1-default-rtdb.firebaseio.com"
 ).rstrip("/")
 
-
-# ============================================================
-# NOVO NÓ EXCLUSIVO DO NEXUS HTML STUDIO
-# ============================================================
-
 FIREBASE_ROOT = "nexus/html_studio"
 
-
 SERVICE_ACCOUNT_ENV = "FIREBASE_SERVICE_ACCOUNT_JSON"
-
 
 SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/firebase.database"
 ]
 
-
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 
 # ============================================================
-# DETECTAR RENDER
+# UTILIDADES
 # ============================================================
 
 def is_render():
@@ -101,16 +78,11 @@ def is_render():
     )
 
 
-# ============================================================
-# URL FIREBASE
-# ============================================================
-
 def firebase_url(chave=None):
 
     url = f"{FIREBASE_DATABASE_URL}/{FIREBASE_ROOT}"
 
     if chave:
-
         chave = str(chave).strip("/")
 
         url += "/" + chave
@@ -118,14 +90,9 @@ def firebase_url(chave=None):
     return url + ".json"
 
 
-# ============================================================
-# BASE64
-# ============================================================
-
 def base64url(data):
 
     if isinstance(data, str):
-
         data = data.encode("utf-8")
 
     return base64.urlsafe_b64encode(
@@ -145,7 +112,7 @@ def base64url_json(obj):
 
 
 # ============================================================
-# SERVICE ACCOUNT
+# CREDENCIAL
 # ============================================================
 
 def carregar_service_account():
@@ -153,11 +120,6 @@ def carregar_service_account():
     bruto = os.environ.get(SERVICE_ACCOUNT_ENV)
 
     if not bruto:
-
-        print(
-            "❌ Variável FIREBASE_SERVICE_ACCOUNT_JSON não encontrada."
-        )
-
         return None
 
     bruto = bruto.strip()
@@ -205,7 +167,7 @@ def carregar_service_account():
 
 
 # ============================================================
-# GERAR ACCESS TOKEN
+# TOKEN GOOGLE OAUTH 2.0
 # ============================================================
 
 def gerar_access_token():
@@ -224,29 +186,17 @@ def gerar_access_token():
     }
 
     if service_account.get("private_key_id"):
-
         header["kid"] = service_account["private_key_id"]
 
     payload = {
-
-        "iss":
-            service_account["client_email"],
-
-        "scope":
-            " ".join(SCOPES),
-
-        "aud":
-            TOKEN_URL,
-
-        "iat":
-            agora,
-
-        "exp":
-            agora + 3600
+        "iss": service_account["client_email"],
+        "scope": " ".join(SCOPES),
+        "aud": TOKEN_URL,
+        "iat": agora,
+        "exp": agora + 3600
     }
 
     parte_header = base64url_json(header)
-
     parte_payload = base64url_json(payload)
 
     mensagem = (
@@ -257,20 +207,21 @@ def gerar_access_token():
 
     private_key = service_account["private_key"]
 
-    caminho_chave = None
+    # --------------------------------------------------------
+    # Assinatura RS256 usando OpenSSL.
+    # Não instala biblioteca pesada no Termux.
+    # --------------------------------------------------------
+
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        delete=False
+    ) as arquivo_chave:
+
+        arquivo_chave.write(private_key)
+        caminho_chave = arquivo_chave.name
 
     try:
-
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            delete=False
-        ) as arquivo_chave:
-
-            arquivo_chave.write(private_key)
-
-            caminho_chave = arquivo_chave.name
-
 
         processo = subprocess.run(
             [
@@ -286,30 +237,12 @@ def gerar_access_token():
             timeout=15
         )
 
-
-    except Exception as erro:
-
-        print(
-            "❌ Erro ao executar OpenSSL:"
-        )
-
-        print(str(erro))
-
-        return None
-
-
     finally:
 
-        if caminho_chave:
-
-            try:
-
-                os.unlink(caminho_chave)
-
-            except OSError:
-
-                pass
-
+        try:
+            os.unlink(caminho_chave)
+        except OSError:
+            pass
 
     if processo.returncode != 0:
 
@@ -326,11 +259,9 @@ def gerar_access_token():
 
         return None
 
-
     assinatura = base64url(
         processo.stdout
     )
-
 
     jwt = (
         mensagem
@@ -338,31 +269,22 @@ def gerar_access_token():
         + assinatura
     )
 
-
     dados = (
         "grant_type="
         "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer"
         "&assertion="
-        + urllib.parse.quote(
-            jwt,
-            safe=""
-        )
+        + urllib.parse.quote(jwt, safe="")
     )
-
 
     request = urllib.request.Request(
         TOKEN_URL,
-
         data=dados.encode("utf-8"),
-
         headers={
             "Content-Type":
                 "application/x-www-form-urlencoded"
         },
-
         method="POST"
     )
-
 
     try:
 
@@ -375,11 +297,7 @@ def gerar_access_token():
                 resposta.read().decode("utf-8")
             )
 
-
-        token = resultado.get(
-            "access_token"
-        )
-
+        token = resultado.get("access_token")
 
         if not token:
 
@@ -389,9 +307,7 @@ def gerar_access_token():
 
             return None
 
-
         return token
-
 
     except urllib.error.HTTPError as erro:
 
@@ -407,7 +323,6 @@ def gerar_access_token():
         print(detalhe)
 
         return None
-
 
     except Exception as erro:
 
@@ -432,25 +347,19 @@ def requisicao_firebase(
 ):
 
     headers = {
-
         "Content-Type":
             "application/json",
-
         "User-Agent":
-            "NEXUS-HTML-STUDIO/1.0"
+            "NEXUS-Firebase-Sync/1.0"
     }
-
 
     if token:
 
         headers["Authorization"] = (
-            "Bearer "
-            + token
+            "Bearer " + token
         )
 
-
     corpo = None
-
 
     if dados is not None:
 
@@ -459,17 +368,12 @@ def requisicao_firebase(
             ensure_ascii=False
         ).encode("utf-8")
 
-
     request = urllib.request.Request(
         url,
-
         data=corpo,
-
         headers=headers,
-
         method=metodo
     )
-
 
     try:
 
@@ -482,20 +386,13 @@ def requisicao_firebase(
                 "utf-8"
             )
 
+            if not texto:
+                return True, None
 
-        if not texto:
-
-            return True, None
-
-
-        try:
-
-            return True, json.loads(texto)
-
-        except json.JSONDecodeError:
-
-            return True, texto
-
+            try:
+                return True, json.loads(texto)
+            except json.JSONDecodeError:
+                return True, texto
 
     except urllib.error.HTTPError as erro:
 
@@ -505,35 +402,24 @@ def requisicao_firebase(
         )
 
         return False, {
-
-            "status":
-                erro.code,
-
-            "erro":
-                detalhe
+            "status": erro.code,
+            "erro": detalhe
         }
-
 
     except Exception as erro:
 
         return False, {
-
-            "erro":
-                str(erro)
+            "erro": str(erro)
         }
 
 
 # ============================================================
-# TOKEN CACHE
+# TOKEN
 # ============================================================
 
 _TOKEN_CACHE = {
-
-    "token":
-        None,
-
-    "expira":
-        0
+    "token": None,
+    "expira": 0
 }
 
 
@@ -541,28 +427,18 @@ def obter_token():
 
     agora = int(time.time())
 
-
     if (
         _TOKEN_CACHE["token"]
-        and
-        agora <
-        _TOKEN_CACHE["expira"] - 60
+        and agora < _TOKEN_CACHE["expira"] - 60
     ):
-
         return _TOKEN_CACHE["token"]
 
-
     token = gerar_access_token()
-
 
     if token:
 
         _TOKEN_CACHE["token"] = token
-
-        _TOKEN_CACHE["expira"] = (
-            agora + 3500
-        )
-
+        _TOKEN_CACHE["expira"] = agora + 3500
 
     return token
 
@@ -587,13 +463,11 @@ def ler_html(nome):
 
     arquivo = caminho_html(nome)
 
-
     if not arquivo.exists():
 
         raise FileNotFoundError(
             f"HTML não encontrado: {arquivo}"
         )
-
 
     if arquivo.suffix.lower() != ".html":
 
@@ -601,93 +475,13 @@ def ler_html(nome):
             "Somente arquivos .html são permitidos."
         )
 
-
     return arquivo.read_text(
         encoding="utf-8"
     )
 
 
 # ============================================================
-# CARREGAR INDEX LOCAL
-# ============================================================
-
-def carregar_index_local():
-
-    index_file = (
-        HTML_DIR / "index.json"
-    )
-
-
-    if not index_file.exists():
-
-        return {
-            "sistema":
-                "NEXUS HTML STUDIO",
-
-            "versao":
-                "1.0",
-
-            "modelo":
-                "gemini-3.1-flash-lite",
-
-            "paginas":
-                []
-        }
-
-
-    try:
-
-        dados = json.loads(
-            index_file.read_text(
-                encoding="utf-8"
-            )
-        )
-
-
-        if not isinstance(dados, dict):
-
-            raise ValueError(
-                "index.json inválido."
-            )
-
-
-        if not isinstance(
-            dados.get("paginas"),
-            list
-        ):
-
-            dados["paginas"] = []
-
-
-        return dados
-
-
-    except Exception as erro:
-
-        print(
-            "⚠️ Erro ao carregar index.json:",
-            erro
-        )
-
-
-        return {
-
-            "sistema":
-                "NEXUS HTML STUDIO",
-
-            "versao":
-                "1.0",
-
-            "modelo":
-                "gemini-3.1-flash-lite",
-
-            "paginas":
-                []
-        }
-
-
-# ============================================================
-# SALVAR HTML NO FIREBASE
+# SALVAR
 # ============================================================
 
 def salvar(nome):
@@ -702,15 +496,9 @@ def salvar(nome):
             "Firebase só será sincronizado no Render."
         )
 
-        print(
-            f"Nó configurado: {FIREBASE_ROOT}"
-        )
-
         return True
 
-
     nome = nome_seguro(nome)
-
 
     if not nome.endswith(".html"):
 
@@ -718,109 +506,92 @@ def salvar(nome):
             "O arquivo precisa ser .html"
         )
 
-
     conteudo = ler_html(nome)
 
-
-    if not conteudo.strip():
-
-        raise ValueError(
-            "O HTML está vazio."
-        )
-
-
-    indice = carregar_index_local()
-
+    index_file = (
+        HTML_DIR / "index.json"
+    )
 
     metadata = {}
 
+    if index_file.exists():
 
-    for pagina in indice.get(
-        "paginas",
-        []
-    ):
+        try:
 
-        if pagina.get(
-            "arquivo"
-        ) == nome:
+            indice = json.loads(
+                index_file.read_text(
+                    encoding="utf-8"
+                )
+            )
 
-            metadata = pagina.copy()
+            for pagina in indice.get(
+                "paginas",
+                []
+            ):
 
-            break
+                if pagina.get(
+                    "arquivo"
+                ) == nome:
 
+                    metadata = pagina.copy()
+                    break
+
+        except Exception:
+            metadata = {}
 
     registro = {
 
-        "sistema":
-            "NEXUS_HTML_STUDIO",
+        "arquivo": nome,
 
-        "arquivo":
-            nome,
+        "titulo": metadata.get(
+            "titulo",
+            ""
+        ),
 
-        "titulo":
-            metadata.get(
-                "titulo",
-                ""
-            ),
+        "preco": metadata.get(
+            "preco",
+            ""
+        ),
 
-        "preco":
-            metadata.get(
-                "preco",
-                ""
-            ),
+        "descricao": metadata.get(
+            "descricao",
+            ""
+        ),
 
-        "descricao":
-            metadata.get(
-                "descricao",
-                ""
-            ),
+        "imagem": metadata.get(
+            "imagem",
+            ""
+        ),
 
-        "imagem":
-            metadata.get(
-                "imagem",
-                ""
-            ),
-
-        "criado_em":
-            metadata.get(
-                "criado_em",
-                datetime.now().isoformat()
-            ),
+        "criado_em": metadata.get(
+            "criado_em",
+            datetime.now().isoformat()
+        ),
 
         "sincronizado_em":
             datetime.now().isoformat(),
 
-        "conteudo":
-            conteudo
+        "conteudo": conteudo
     }
 
-
     token = obter_token()
-
 
     if not token:
 
         print(
-            "❌ Firebase não autenticado."
+            "⚠️ Firebase não autenticado."
         )
 
         return False
 
-
     chave = nome[:-5]
 
-
     ok, resposta = requisicao_firebase(
-
         firebase_url(chave),
-
         metodo="PUT",
-
         dados=registro,
-
         token=token
     )
-
 
     if not ok:
 
@@ -838,15 +609,6 @@ def salvar(nome):
 
         return False
 
-
-    print(
-        "============================================"
-    )
-
-    print(
-        "☁️ NEXUS HTML STUDIO"
-    )
-
     print(
         "✅ HTML sincronizado no Firebase."
     )
@@ -859,30 +621,17 @@ def salvar(nome):
         f"Nó: {FIREBASE_ROOT}/{chave}"
     )
 
-    print(
-        "============================================"
-    )
-
-
     return True
 
 
 # ============================================================
-# TESTE FIREBASE
+# TESTE
 # ============================================================
 
 def teste():
 
     print(
-        "============================================"
-    )
-
-    print(
-        "=== TESTE FIREBASE NEXUS HTML STUDIO ==="
-    )
-
-    print(
-        "============================================"
+        "=== TESTE FIREBASE NEXUS ==="
     )
 
     print(
@@ -894,22 +643,16 @@ def teste():
     )
 
     print(
-        f"HTML: {HTML_DIR}"
-    )
-
-    print(
         f"Database: {FIREBASE_DATABASE_URL}"
     )
 
     print(
-        f"Nó EXCLUSIVO: {FIREBASE_ROOT}"
+        f"Nó: {FIREBASE_ROOT}"
     )
-
 
     if not is_render():
 
         print()
-
         print(
             "ℹ️ Teste Firebase ignorado no Termux."
         )
@@ -920,9 +663,7 @@ def teste():
 
         return True
 
-
     token = obter_token()
-
 
     if not token:
 
@@ -932,14 +673,10 @@ def teste():
 
         return False
 
-
     ok, resposta = requisicao_firebase(
-
         firebase_url(),
-
         token=token
     )
-
 
     if not ok:
 
@@ -957,95 +694,60 @@ def teste():
 
         return False
 
-
     print(
         "✅ Firebase autenticado."
     )
 
-
     if resposta:
 
         print(
-            f"Registros no {FIREBASE_ROOT}: "
-            f"{len(resposta)}"
+            f"Registros: {len(resposta)}"
         )
 
     else:
 
         print(
-            "📭 O nó do NEXUS está vazio."
+            "📭 nexus/html_gerados está vazio."
         )
-
 
     return True
 
 
+
 # ============================================================
-# RESTAURAR TODOS
+# RESTAURAR TODOS OS HTMLs DO FIREBASE
 # ============================================================
 
 def restaurar_todos():
+    """
+    Recupera todos os HTMLs armazenados em:
+    nexus/html_gerados
+
+    Restaura:
+    - arquivos .html
+    - index.json
+    """
 
     if not is_render():
-
-        print(
-            "ℹ️ Ambiente local detectado."
-        )
-
-        print(
-            "A restauração automática ocorre somente no Render."
-        )
-
-        print(
-            f"Nó configurado: {FIREBASE_ROOT}"
-        )
-
+        print("ℹ️ Ambiente local detectado.")
+        print("A restauração automática ocorre somente no Render.")
         return True
-
 
     token = obter_token()
 
-
     if not token:
-
-        print(
-            "❌ Não foi possível autenticar no Firebase."
-        )
-
+        print("❌ Não foi possível autenticar no Firebase.")
         return False
 
-
-    print(
-        "============================================"
-    )
-
-    print(
-        "☁️ NEXUS HTML STUDIO — RESTAURAÇÃO"
-    )
-
-    print(
-        "============================================"
-    )
-
-    print(
-        f"Consultando exclusivamente: {FIREBASE_ROOT}"
-    )
-
+    print("☁️ Consultando HTMLs no Firebase...")
 
     ok, resposta = requisicao_firebase(
-
         firebase_url(),
-
         token=token
     )
 
-
     if not ok:
-
-        print(
-            "❌ Falha ao consultar Firebase."
-        )
-
+        print("❌ Falha ao consultar Firebase.")
         print(
             json.dumps(
                 resposta,
@@ -1053,326 +755,131 @@ def restaurar_todos():
                 indent=2
             )
         )
-
         return False
-
 
     if not resposta:
-
-        print(
-            "📭 Nenhum HTML do NEXUS encontrado."
-        )
-
+        print("📭 Nenhum HTML encontrado no Firebase.")
         return True
 
-
-    if not isinstance(
-        resposta,
-        dict
-    ):
-
-        print(
-            "❌ Resposta inesperada do Firebase."
-        )
-
+    if not isinstance(resposta, dict):
+        print("❌ Resposta inesperada do Firebase.")
         return False
 
-
-    HTML_DIR.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-
     paginas = []
-
     restaurados = 0
-
     ignorados = 0
 
+    HTML_DIR.mkdir(parents=True, exist_ok=True)
 
     for chave, registro in resposta.items():
 
-        if not isinstance(
-            registro,
-            dict
-        ):
-
+        if not isinstance(registro, dict):
             ignorados += 1
-
             continue
 
+        nome = registro.get("arquivo") or f"{chave}.html"
 
-        sistema = registro.get(
-            "sistema",
-            ""
-        )
-
-
-        # ----------------------------------------------------
-        # Segurança adicional:
-        # mesmo estando no nó exclusivo,
-        # só restaura registros identificados como NEXUS.
-        # ----------------------------------------------------
-
-        if sistema and sistema != "NEXUS_HTML_STUDIO":
-
+        if not isinstance(nome, str):
             ignorados += 1
-
-            print(
-                f"⚠️ Registro de outro sistema ignorado: {chave}"
-            )
-
             continue
 
+        nome = nome.strip()
 
-        nome = registro.get(
-            "arquivo"
-        ) or f"{chave}.html"
-
-
-        if not isinstance(
-            nome,
-            str
-        ):
-
-            ignorados += 1
-
-            continue
-
-
-        nome = nome_seguro(
-            nome.strip()
-        )
-
-
-        if not nome.endswith(
-            ".html"
-        ):
-
+        if not nome.endswith(".html"):
             nome += ".html"
 
-
-        conteudo = registro.get(
-            "conteudo",
-            ""
-        )
-
-
-        if (
-            not isinstance(
-                conteudo,
-                str
-            )
-            or
-            not conteudo.strip()
-        ):
-
+        try:
+            nome = nome_seguro(nome)
+        except Exception:
             ignorados += 1
-
-            print(
-                f"⚠️ Ignorado sem conteúdo: {nome}"
-            )
-
             continue
 
+        conteudo = registro.get("conteudo", "")
 
-        caminho = (
-            HTML_DIR / nome
-        )
+        if not isinstance(conteudo, str) or not conteudo.strip():
+            ignorados += 1
+            print(f"⚠️ Ignorado sem conteúdo: {nome}")
+            continue
 
+        caminho = HTML_DIR / nome
 
         caminho.write_text(
             conteudo,
             encoding="utf-8"
         )
 
-
         pagina = {
-
-            "arquivo":
-                nome,
-
-            "titulo":
-                registro.get(
-                    "titulo",
-                    ""
-                ),
-
-            "preco":
-                registro.get(
-                    "preco",
-                    ""
-                ),
-
-            "descricao":
-                registro.get(
-                    "descricao",
-                    ""
-                ),
-
-            "imagem":
-                registro.get(
-                    "imagem",
-                    ""
-                ),
-
-            "criado_em":
-                registro.get(
-                    "criado_em",
-                    datetime.now().isoformat()
-                )
+            "arquivo": nome,
+            "titulo": registro.get("titulo", ""),
+            "preco": registro.get("preco", ""),
+            "descricao": registro.get("descricao", ""),
+            "imagem": registro.get("imagem", ""),
+            "criado_em": registro.get(
+                "criado_em",
+                datetime.now().isoformat()
+            )
         }
 
-
-        paginas.append(
-            pagina
-        )
-
-
+        paginas.append(pagina)
         restaurados += 1
 
+        print(f"✅ Restaurado: {nome}")
 
-        print(
-            f"✅ Restaurado: {nome}"
-        )
-
-
-    # ========================================================
-    # INDEX.JSON
-    # ========================================================
-
-    index_file = (
-        HTML_DIR / "index.json"
-    )
-
+    index_file = HTML_DIR / "index.json"
 
     indice = {
-
-        "sistema":
-            "NEXUS HTML STUDIO",
-
-        "versao":
-            "1.0",
-
-        "modelo":
-            "gemini-3.1-flash-lite",
-
-        "paginas":
-            paginas
+        "paginas": paginas
     }
 
-
     index_file.write_text(
-
         json.dumps(
             indice,
             ensure_ascii=False,
             indent=2
         ),
-
         encoding="utf-8"
     )
 
-
     print()
-
-    print(
-        "============================================"
-    )
-
-    print(
-        "☁️ RESTAURAÇÃO NEXUS CONCLUÍDA"
-    )
-
-    print(
-        "============================================"
-    )
-
-    print(
-        f"✅ HTMLs restaurados: {restaurados}"
-    )
-
-    print(
-        f"⚠️ Registros ignorados: {ignorados}"
-    )
-
-    print(
-        f"📄 index.json: {index_file}"
-    )
-
-    print(
-        f"☁️ Fonte: {FIREBASE_ROOT}"
-    )
-
-    print(
-        "============================================"
-    )
-
+    print("============================================")
+    print("☁️ RESTAURAÇÃO FIREBASE CONCLUÍDA")
+    print("============================================")
+    print(f"✅ HTMLs restaurados: {restaurados}")
+    print(f"⚠️ Registros ignorados: {ignorados}")
+    print(f"📄 index.json reconstruído: {index_file}")
+    print("============================================")
 
     return True
-
-
-# ============================================================
-# AJUDA
-# ============================================================
-
-def ajuda():
-
-    print(
-        """
-NEXUS HTML STUDIO — FIREBASE SYNC
-
-Comandos:
-
-teste
-
-salvar arquivo.html
-
-restaurar_todos
-
-Nó Firebase exclusivo:
-
-nexus/html_studio
-
-O nó antigo:
-
-nexus/html_gerados
-
-NÃO É ALTERADO POR ESTE SCRIPT.
-
-A sincronização Firebase ocorre somente no Render.
-"""
-    )
 
 
 # ============================================================
 # MAIN
 # ============================================================
 
+def ajuda():
+
+    print("""
+NEXUS FIREBASE SYNC
+
+teste
+salvar arquivo.html
+
+A sincronização Firebase ocorre somente no Render.
+""")
+
+
 def main():
 
     if len(sys.argv) < 2:
 
         ajuda()
-
         return 1
 
-
-    comando = (
-        sys.argv[1]
-        .lower()
-    )
-
+    comando = sys.argv[1].lower()
 
     if comando == "teste":
 
-        return (
-            0
-            if teste()
-            else 1
-        )
-
+        return 0 if teste() else 1
 
     if comando == "salvar":
 
@@ -1384,42 +891,22 @@ def main():
 
             return 1
 
-
         return (
-
             0
-
-            if salvar(
-                sys.argv[2]
-            )
-
+            if salvar(sys.argv[2])
             else 1
         )
-
 
     if comando == "restaurar_todos":
 
-        return (
-
-            0
-
-            if restaurar_todos()
-
-            else 1
-        )
-
+        return 0 if restaurar_todos() else 1
 
     ajuda()
 
     return 1
 
 
-# ============================================================
-# EXECUÇÃO
-# ============================================================
-
 if __name__ == "__main__":
-
     raise SystemExit(
         main()
     )
