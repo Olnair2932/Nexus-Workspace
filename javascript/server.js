@@ -424,7 +424,66 @@ app.post("/api/html/excluir", async (req, res) => {
     try {
         const dados = JSON.parse(resultado.stdout.trim());
         if (!dados.ok) return res.status(400).json(dados);
-        return res.json(dados);
+
+        // ----------------------------------------------------
+        // EXCLUI TAMBÉM O HTML DO FIREBASE
+        // ----------------------------------------------------
+
+        let firebase = {
+            ok: false,
+            erro: "Exclusão Firebase não executada."
+        };
+
+        if (fs.existsSync(FIREBASE_SYNC_TOOL)) {
+            firebase = await new Promise((resolve) => {
+                execFile(
+                    "python3",
+                    [
+                        FIREBASE_SYNC_TOOL,
+                        "excluir",
+                        nomeSeguro
+                    ],
+                    {
+                        cwd: WORKSPACE,
+                        env: process.env,
+                        timeout: 120000,
+                        maxBuffer: 5 * 1024 * 1024
+                    },
+                    (erroFirebase, stdoutFirebase, stderrFirebase) => {
+
+                        if (erroFirebase) {
+                            resolve({
+                                ok: false,
+                                erro: erroFirebase.message,
+                                stdout: stdoutFirebase || "",
+                                stderr: stderrFirebase || ""
+                            });
+                            return;
+                        }
+
+                        try {
+                            resolve(
+                                JSON.parse(
+                                    (stdoutFirebase || "").trim()
+                                )
+                            );
+                        } catch {
+                            resolve({
+                                ok: false,
+                                erro: "O sincronizador Firebase não retornou JSON válido.",
+                                stdout: stdoutFirebase || "",
+                                stderr: stderrFirebase || ""
+                            });
+                        }
+                    }
+                );
+            });
+        }
+
+        return res.json({
+            ...dados,
+            firebase
+        });
     } catch {
         return res.status(500).json({ ok: false, erro: "A ferramenta de exclusão não retornou JSON válido.", stdout: resultado.stdout, stderr: resultado.stderr });
     }
