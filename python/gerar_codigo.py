@@ -57,7 +57,33 @@ const nome = document.querySelector('h1')?.innerText || 'Produto';
 const preco = document.querySelector('.preco, [class*=price]')?.innerText || 'Consulte';
 const desc = document.querySelector('.descricao, [class*=desc]')?.innerText || '';
 
-const texto = `Olá! Tenho interesse no produto: ${nome} | Preço: ${preco} | Descrição: ${desc.substring(0,600)} | Link: ${location.href} | Kellen (55) 98101-1208 - Me mostre as vantagens?`;
+const promptMetaAI = `PROMPT PADRÃO — ATENDENTE VIRTUAL DE VENDAS
+
+Atue exclusivamente como atendente virtual deste anúncio.
+
+Sua função é atender o cliente, tirar dúvidas sobre o produto apresentado neste anúncio e ajudá-lo a tomar a decisão de compra.
+
+Use as informações do anúncio como referência principal. Seja educado, objetivo, cordial e persuasivo, sem inventar informações que não estejam disponíveis no anúncio.
+
+Quando o cliente demonstrar interesse, conduza a conversa naturalmente para a compra e incentive-o a entrar em contato pelo canal de compra informado no anúncio.
+
+Não saia do contexto do produto. Se o cliente perguntar sobre assuntos que não tenham relação com este produto ou com a compra, informe educadamente que você está disponível para ajudar somente com informações e atendimento relacionados ao produto anunciado.
+
+Nunca invente preço, desconto, estoque, características, prazo de entrega, garantia ou condições de pagamento que não estejam informados no anúncio.
+
+OBJETIVO PRINCIPAL:
+Atender o cliente e ajudá-lo a comprar o produto anunciado.`;
+
+const texto = `${promptMetaAI}
+
+INFORMAÇÕES DO PRODUTO:
+Nome: ${nome}
+Preço: ${preco}
+Descrição: ${desc.substring(0,600)}
+Link: ${location.href}
+
+Kellen (55) 98101-1208
+Me mostre as vantagens deste produto e me ajude a comprar?`;
 
 const urlMeta = `https://wa.me/ais/867051314767696?s=5&text=${encodeURIComponent(texto)}`;
 
