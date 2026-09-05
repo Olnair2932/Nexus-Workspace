@@ -286,6 +286,84 @@ def api_admin_usuarios():
 
 
 
+
+@app.route("/api/admin/usuarios/<usuario_uid>/plano", methods=["POST"])
+def api_admin_alterar_plano(usuario_uid):
+    uid = session.get("uid")
+
+    if not uid:
+        return jsonify({
+            "ok": False,
+            "erro": "Não autenticado."
+        }), 401
+
+    administrador = obter_usuario(uid)
+
+    if not administrador:
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Administrador não encontrado."
+        }), 401
+
+    if administrador.get("status") != "ativo":
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso suspenso."
+        }), 403
+
+    if administrador.get("perfil") != "admin":
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso permitido somente para administradores."
+        }), 403
+
+    if usuario_uid == uid:
+        return jsonify({
+            "ok": False,
+            "erro": "O administrador não pode alterar o próprio plano."
+        }), 400
+
+    dados = request.get_json(silent=True) or {}
+    novo_plano = dados.get("plano")
+
+    planos_permitidos = (
+        "gratuito",
+        "basico",
+        "pro",
+        "premium"
+    )
+
+    if novo_plano not in planos_permitidos:
+        return jsonify({
+            "ok": False,
+            "erro": (
+                "Plano inválido. Use: "
+                "gratuito, basico, pro ou premium."
+            )
+        }), 400
+
+    referencia = db.reference(f"nexus/usuarios/{usuario_uid}")
+    usuario = referencia.get()
+
+    if not usuario:
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não encontrado."
+        }), 404
+
+    referencia.update({
+        "plano": novo_plano
+    })
+
+    return jsonify({
+        "ok": True,
+        "mensagem": "Plano atualizado com sucesso.",
+        "plano": novo_plano,
+        "uid": usuario_uid
+    })
+
 @app.route("/api/admin/usuarios/<usuario_uid>/status", methods=["POST"])
 def api_admin_alterar_status(usuario_uid):
     uid = session.get("uid")

@@ -130,7 +130,23 @@
             color: #cbd5e1;
         }
 
-        .botao-status {
+        .seletor-plano {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+    background: #ffffff;
+    min-width: 135px;
+}
+
+.plano-atual {
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.botao-status {
             border: 0;
             border-radius: 10px;
             padding: 8px 12px;
@@ -313,7 +329,23 @@ async function carregarUsuarios() {
                 <td>${escaparHTML(usuario.nome || "Sem nome")}</td>
                 <td>${escaparHTML(usuario.email || "Sem e-mail")}</td>
                 <td>${escaparHTML(usuario.perfil || "usuario")}</td>
-                <td>${escaparHTML(usuario.plano || "gratuito")}</td>
+                <td>
+                    ${
+                        usuario.uid === usuarioAtualUid
+                            ? `<span class="plano-atual">${escaparHTML(usuario.plano || "gratuito")}</span>`
+                            : `
+                                <select
+                                    class="seletor-plano"
+                                    onchange="alterarPlano('${escaparHTML(usuario.uid)}', this.value, '${escaparHTML(usuario.plano || "gratuito")}')"
+                                >
+                                    <option value="gratuito" ${(usuario.plano || "gratuito") === "gratuito" ? "selected" : ""}>🆓 Gratuito</option>
+                                    <option value="basico" ${usuario.plano === "basico" ? "selected" : ""}>⭐ Básico</option>
+                                    <option value="pro" ${usuario.plano === "pro" ? "selected" : ""}>🚀 Pro</option>
+                                    <option value="premium" ${usuario.plano === "premium" ? "selected" : ""}>👑 Premium</option>
+                                </select>
+                              `
+                    }
+                </td>
                 <td>
                     <span class="badge ${classeStatus}">
                         ${escaparHTML(status)}
@@ -378,6 +410,71 @@ function formatarData(valor) {
     }
 
     return data.toLocaleString("pt-BR");
+}
+
+
+async function alterarPlano(uid, planoAtual, planoAnterior) {
+    if (planoAtual === planoAnterior) {
+        return;
+    }
+
+    const nomesPlanos = {
+        gratuito: "🆓 Gratuito",
+        basico: "⭐ Básico",
+        pro: "🚀 Pro",
+        premium: "👑 Premium"
+    };
+
+    const novoNome = nomesPlanos[planoAtual] || planoAtual;
+    const anteriorNome = nomesPlanos[planoAnterior] || planoAnterior;
+
+    const confirmacao = confirm(
+        `Deseja alterar o plano de ${anteriorNome} para ${novoNome}?`
+    );
+
+    if (!confirmacao) {
+        await carregarUsuarios();
+        return;
+    }
+
+    try {
+        const resposta = await fetch(
+            `/api/admin/usuarios/${encodeURIComponent(uid)}/plano`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    plano: planoAtual
+                })
+            }
+        );
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.ok) {
+            throw new Error(
+                dados.erro ||
+                "Não foi possível alterar o plano."
+            );
+        }
+
+        alert("✅ " + dados.mensagem);
+
+        await carregarUsuarios();
+
+    } catch (erro) {
+        console.error("NEXUS ADMIN PLANO:", erro);
+
+        alert(
+            "❌ " +
+            (erro.message ||
+            "Não foi possível alterar o plano.")
+        );
+
+        await carregarUsuarios();
+    }
 }
 
 
