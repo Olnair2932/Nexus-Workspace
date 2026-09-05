@@ -223,6 +223,29 @@ def painel():
     return render_template("painel.html", usuario=usuario)
 
 
+@app.route("/admin")
+def admin():
+    uid = session.get("uid")
+
+    if not uid:
+        return redirect("/")
+
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        session.clear()
+        return redirect("/")
+
+    if usuario.get("status") != "ativo":
+        session.clear()
+        return redirect("/")
+
+    if usuario.get("perfil") != "admin":
+        return redirect("/painel")
+
+    return render_template("admin.html", usuario=usuario)
+
+
 @app.route("/logout")
 def logout():
     session.clear()

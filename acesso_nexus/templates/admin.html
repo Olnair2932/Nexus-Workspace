@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NEXUS — Administração</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .topo {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .topo h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .topo p {
+            margin: 0;
+            color: #94a3b8;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: #14532d;
+            color: #bbf7d0;
+            font-weight: bold;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .botao {
+            display: inline-block;
+            text-decoration: none;
+            padding: 12px 18px;
+            border-radius: 10px;
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+        }
+
+        .botao.sair {
+            background: #7f1d1d;
+        }
+
+        .aviso {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .topo,
+            .card {
+                padding: 18px;
+            }
+
+            .topo h1 {
+                font-size: 23px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="topo">
+        <h1>🛡️ NEXUS — Administração</h1>
+        <p>Painel exclusivo do administrador do sistema.</p>
+    </div>
+
+    <div class="card">
+        <h2>👑 Administrador</h2>
+
+        <p>
+            <strong>Nome:</strong>
+            {{ usuario.nome }}
+        </p>
+
+        <p>
+            <strong>E-mail:</strong>
+            {{ usuario.email }}
+        </p>
+
+        <p>
+            <strong>Perfil:</strong>
+            {{ usuario.perfil }}
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            <span class="status">{{ usuario.status }}</span>
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>👥 Gerenciamento de usuários</h2>
+
+        <p class="aviso">
+            O gerenciamento de usuários será implementado
+            progressivamente nesta área.
+        </p>
+
+        <div class="acoes">
+            <a class="botao" href="/painel">
+                👤 Área do usuário
+            </a>
+
+            <a class="botao sair" href="/logout">
+                🚪 Sair
+            </a>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
