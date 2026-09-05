@@ -130,6 +130,31 @@
             color: #cbd5e1;
         }
 
+        .botao-status {
+            border: 0;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .botao-status.suspender {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .botao-status.ativar {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .acao-propria {
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+
         .acoes {
             display: flex;
             gap: 12px;
@@ -221,6 +246,7 @@
                         <th>Plano</th>
                         <th>Status</th>
                         <th>Último acesso</th>
+                        <th>Ação</th>
                     </tr>
                 </thead>
 
@@ -251,6 +277,9 @@
 </div>
 
 <script>
+
+const usuarioAtualUid = {{ usuario.uid | tojson }};
+
 async function carregarUsuarios() {
     const mensagem = document.getElementById("mensagem");
     const tabelaWrapper = document.getElementById("tabelaWrapper");
@@ -291,6 +320,20 @@ async function carregarUsuarios() {
                     </span>
                 </td>
                 <td>${formatarData(usuario.ultimo_login)}</td>
+                <td>
+                    ${
+                        usuario.uid === usuarioAtualUid
+                            ? '<span class="acao-propria">Sua conta</span>'
+                            : `
+                                <button
+                                    class="botao-status ${status === "ativo" ? "suspender" : "ativar"}"
+                                    onclick="alterarStatus('${escaparHTML(usuario.uid)}', '${status}')"
+                                >
+                                    ${status === "ativo" ? "⏸️ Suspender" : "▶️ Ativar"}
+                                </button>
+                              `
+                    }
+                </td>
             `;
 
             lista.appendChild(linha);
@@ -335,6 +378,64 @@ function formatarData(valor) {
     }
 
     return data.toLocaleString("pt-BR");
+}
+
+
+async function alterarStatus(uid, statusAtual) {
+    const novoStatus =
+        statusAtual === "ativo"
+            ? "suspenso"
+            : "ativo";
+
+    const acao =
+        novoStatus === "ativo"
+            ? "ativar"
+            : "suspender";
+
+    const confirmacao = confirm(
+        `Deseja ${acao} este usuário?`
+    );
+
+    if (!confirmacao) {
+        return;
+    }
+
+    try {
+        const resposta = await fetch(
+            `/api/admin/usuarios/${encodeURIComponent(uid)}/status`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    status: novoStatus
+                })
+            }
+        );
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.ok) {
+            throw new Error(
+                dados.erro ||
+                "Não foi possível alterar o status."
+            );
+        }
+
+        alert("✅ " + dados.mensagem);
+
+        await carregarUsuarios();
+
+    } catch (erro) {
+        console.error("NEXUS ADMIN STATUS:", erro);
+
+        alert(
+            "❌ " +
+            (erro.message ||
+            "Não foi possível alterar o status.")
+        );
+    }
 }
 
 carregarUsuarios();

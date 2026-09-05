@@ -285,6 +285,79 @@ def api_admin_usuarios():
     })
 
 
+
+@app.route("/api/admin/usuarios/<usuario_uid>/status", methods=["POST"])
+def api_admin_alterar_status(usuario_uid):
+    uid = session.get("uid")
+
+    if not uid:
+        return jsonify({
+            "ok": False,
+            "erro": "Não autenticado."
+        }), 401
+
+    administrador = obter_usuario(uid)
+
+    if not administrador:
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Administrador não encontrado."
+        }), 401
+
+    if administrador.get("status") != "ativo":
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso suspenso."
+        }), 403
+
+    if administrador.get("perfil") != "admin":
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso permitido somente para administradores."
+        }), 403
+
+    if usuario_uid == uid:
+        return jsonify({
+            "ok": False,
+            "erro": "O administrador não pode alterar o próprio status."
+        }), 400
+
+    dados = request.get_json(silent=True) or {}
+    novo_status = dados.get("status")
+
+    if novo_status not in ("ativo", "suspenso"):
+        return jsonify({
+            "ok": False,
+            "erro": "Status inválido. Use ativo ou suspenso."
+        }), 400
+
+    referencia = db.reference(f"nexus/usuarios/{usuario_uid}")
+    usuario = referencia.get()
+
+    if not usuario:
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não encontrado."
+        }), 404
+
+    referencia.update({
+        "status": novo_status
+    })
+
+    return jsonify({
+        "ok": True,
+        "mensagem": (
+            "Usuário ativado com sucesso."
+            if novo_status == "ativo"
+            else "Usuário suspenso com sucesso."
+        ),
+        "status": novo_status,
+        "uid": usuario_uid
+    })
+
+
 @app.route("/admin")
 def admin():
     uid = session.get("uid")
