@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NEXUS — Área do usuário</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            margin: 30px auto;
+        }
+
+        .card {
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,.25);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .perfil {
+            display: grid;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .item {
+            padding: 14px;
+            border-radius: 12px;
+            background: #0f172a;
+        }
+
+        .label {
+            display: block;
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .valor {
+            font-weight: 700;
+        }
+
+        .status {
+            color: #86efac;
+        }
+
+        a {
+            display: inline-block;
+            padding: 13px 18px;
+            border-radius: 10px;
+            background: white;
+            color: #111827;
+            text-decoration: none;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <h1>🚀 NEXUS — Área do usuário</h1>
+
+        <p>
+            Login validado pelo Firebase.
+        </p>
+
+        <div class="perfil">
+
+            <div class="item">
+                <span class="label">Nome</span>
+                <span class="valor">{{ usuario.nome }}</span>
+            </div>
+
+            <div class="item">
+                <span class="label">E-mail</span>
+                <span class="valor">{{ usuario.email }}</span>
+            </div>
+
+            <div class="item">
+                <span class="label">Perfil</span>
+                <span class="valor">{{ usuario.perfil }}</span>
+            </div>
+
+            <div class="item">
+                <span class="label">Plano</span>
+                <span class="valor">{{ usuario.plano }}</span>
+            </div>
+
+            <div class="item">
+                <span class="label">Status</span>
+                <span class="valor status">{{ usuario.status }}</span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <a href="/logout">
+            🚪 Sair
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>
