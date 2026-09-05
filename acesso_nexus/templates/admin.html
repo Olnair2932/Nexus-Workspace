@@ -22,11 +22,12 @@
 
         .container {
             width: 100%;
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
         }
 
-        .topo {
+        .topo,
+        .card {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 18px;
@@ -44,14 +45,6 @@
             color: #94a3b8;
         }
 
-        .card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 18px;
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-
         .card h2 {
             margin-top: 0;
         }
@@ -63,6 +56,78 @@
             background: #14532d;
             color: #bbf7d0;
             font-weight: bold;
+        }
+
+        .usuarios-topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .contador {
+            color: #cbd5e1;
+            font-weight: bold;
+        }
+
+        .tabela-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #334155;
+            border-radius: 12px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: #0f172a;
+            color: #cbd5e1;
+        }
+
+        td {
+            color: #f8fafc;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 15px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .ativo {
+            background: #14532d;
+            color: #bbf7d0;
+        }
+
+        .outro {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        .mensagem {
+            padding: 16px;
+            border-radius: 10px;
+            background: #0f172a;
+            color: #cbd5e1;
         }
 
         .acoes {
@@ -84,11 +149,6 @@
 
         .botao.sair {
             background: #7f1d1d;
-        }
-
-        .aviso {
-            color: #cbd5e1;
-            line-height: 1.6;
         }
 
         @media (max-width: 600px) {
@@ -142,11 +202,39 @@
     </div>
 
     <div class="card">
-        <h2>👥 Gerenciamento de usuários</h2>
+        <div class="usuarios-topo">
+            <h2>👥 Usuários cadastrados</h2>
+            <div class="contador" id="contador">Carregando...</div>
+        </div>
 
-        <p class="aviso">
-            O gerenciamento de usuários será implementado
-            progressivamente nesta área.
+        <div id="mensagem" class="mensagem">
+            🔄 Carregando usuários...
+        </div>
+
+        <div class="tabela-wrapper" id="tabelaWrapper" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Perfil</th>
+                        <th>Plano</th>
+                        <th>Status</th>
+                        <th>Último acesso</th>
+                    </tr>
+                </thead>
+
+                <tbody id="listaUsuarios"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>⚙️ Administração</h2>
+
+        <p>
+            O gerenciamento de planos, status e demais controles
+            será implementado progressivamente.
         </p>
 
         <div class="acoes">
@@ -161,6 +249,96 @@
     </div>
 
 </div>
+
+<script>
+async function carregarUsuarios() {
+    const mensagem = document.getElementById("mensagem");
+    const tabelaWrapper = document.getElementById("tabelaWrapper");
+    const lista = document.getElementById("listaUsuarios");
+    const contador = document.getElementById("contador");
+
+    try {
+        const resposta = await fetch("/api/admin/usuarios");
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.ok) {
+            throw new Error(dados.erro || "Não foi possível carregar os usuários.");
+        }
+
+        lista.innerHTML = "";
+
+        if (!dados.usuarios.length) {
+            mensagem.textContent = "Nenhum usuário cadastrado.";
+            tabelaWrapper.style.display = "none";
+            contador.textContent = "0 usuários";
+            return;
+        }
+
+        dados.usuarios.forEach(usuario => {
+            const linha = document.createElement("tr");
+
+            const status = usuario.status || "desconhecido";
+            const classeStatus = status === "ativo" ? "ativo" : "outro";
+
+            linha.innerHTML = `
+                <td>${escaparHTML(usuario.nome || "Sem nome")}</td>
+                <td>${escaparHTML(usuario.email || "Sem e-mail")}</td>
+                <td>${escaparHTML(usuario.perfil || "usuario")}</td>
+                <td>${escaparHTML(usuario.plano || "gratuito")}</td>
+                <td>
+                    <span class="badge ${classeStatus}">
+                        ${escaparHTML(status)}
+                    </span>
+                </td>
+                <td>${formatarData(usuario.ultimo_login)}</td>
+            `;
+
+            lista.appendChild(linha);
+        });
+
+        mensagem.style.display = "none";
+        tabelaWrapper.style.display = "block";
+
+        contador.textContent =
+            dados.total === 1
+                ? "1 usuário"
+                : `${dados.total} usuários`;
+
+    } catch (erro) {
+        console.error("NEXUS ADMIN:", erro);
+
+        tabelaWrapper.style.display = "none";
+        mensagem.style.display = "block";
+        mensagem.textContent = "❌ " + erro.message;
+        contador.textContent = "Erro";
+    }
+}
+
+function escaparHTML(valor) {
+    return String(valor)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function formatarData(valor) {
+    if (!valor) {
+        return "—";
+    }
+
+    const data = new Date(valor);
+
+    if (Number.isNaN(data.getTime())) {
+        return escaparHTML(valor);
+    }
+
+    return data.toLocaleString("pt-BR");
+}
+
+carregarUsuarios();
+</script>
 
 </body>
 </html>

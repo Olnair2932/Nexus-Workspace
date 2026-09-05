@@ -55,6 +55,27 @@ def obter_usuario(uid):
     return referencia.get()
 
 
+def listar_usuarios():
+    referencia = db.reference("nexus/usuarios")
+    dados = referencia.get() or {}
+
+    usuarios = []
+
+    for uid, usuario in dados.items():
+        if not isinstance(usuario, dict):
+            continue
+
+        usuario = dict(usuario)
+        usuario.setdefault("uid", uid)
+        usuarios.append(usuario)
+
+    usuarios.sort(
+        key=lambda usuario: usuario.get("nome", "").lower()
+    )
+
+    return usuarios
+
+
 def criar_ou_atualizar_usuario(usuario_firebase):
     uid = usuario_firebase["uid"]
     email = (usuario_firebase.get("email") or "").strip().lower()
@@ -221,6 +242,47 @@ def painel():
         return redirect("/")
 
     return render_template("painel.html", usuario=usuario)
+
+
+@app.route("/api/admin/usuarios")
+def api_admin_usuarios():
+    uid = session.get("uid")
+
+    if not uid:
+        return jsonify({
+            "ok": False,
+            "erro": "Não autenticado."
+        }), 401
+
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não encontrado."
+        }), 401
+
+    if usuario.get("status") != "ativo":
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso suspenso."
+        }), 403
+
+    if usuario.get("perfil") != "admin":
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso permitido somente para administradores."
+        }), 403
+
+    usuarios = listar_usuarios()
+
+    return jsonify({
+        "ok": True,
+        "total": len(usuarios),
+        "usuarios": usuarios
+    })
 
 
 @app.route("/admin")
