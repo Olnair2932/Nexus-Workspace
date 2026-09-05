@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS — Login</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f172a;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        .login {
+            width: min(420px, 92%);
+            padding: 35px;
+            border-radius: 20px;
+            background: #1e293b;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,.4);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #cbd5e1;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 15px;
+            border: 0;
+            border-radius: 10px;
+            background: white;
+            color: #111827;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: .9;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="login">
+    <h1>🚀 NEXUS</h1>
+
+    <p>NEXUS HTML STUDIO</p>
+    <p>Entre com sua conta Google para continuar.</p>
+
+    <button id="googleLogin">
+        🔐 Entrar com Google
+    </button>
+
+    <div id="status"></div>
+</div>
+
+<script type="module">
+
+import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+
+const firebaseConfig = {
+    apiKey: "AIzaSyB0Tr9Dsy-Pn8WSPuTMAsx5j2S8Sc4xIDg",
+    authDomain: "finance-master-629d1.firebaseapp.com",
+    databaseURL: "https://finance-master-629d1-default-rtdb.firebaseio.com",
+    projectId: "finance-master-629d1",
+    storageBucket: "finance-master-629d1.firebasestorage.app",
+    messagingSenderId: "411976359484",
+    appId: "1:411976359484:web:eeee1000da6c1335326d39"
+};
+
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
+
+const provider = new GoogleAuthProvider();
+
+const botao = document.getElementById("googleLogin");
+const status = document.getElementById("status");
+
+
+botao.addEventListener("click", async () => {
+
+    status.textContent = "🔄 Abrindo login Google...";
+
+    try {
+
+        const resultado = await signInWithPopup(auth, provider);
+
+        const usuario = resultado.user;
+
+        status.textContent =
+            "✅ Login realizado com sucesso! " +
+            usuario.displayName;
+
+        console.log("NEXUS usuário:", {
+            uid: usuario.uid,
+            nome: usuario.displayName,
+            email: usuario.email
+        });
+
+        setTimeout(() => {
+            window.location.href = "/painel";
+        }, 800);
+
+    } catch (erro) {
+
+        console.error("Erro no login Google:", erro);
+
+        status.textContent =
+            "❌ Não foi possível realizar o login.";
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
