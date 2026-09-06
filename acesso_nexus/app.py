@@ -364,6 +364,81 @@ def api_admin_alterar_plano(usuario_uid):
         "uid": usuario_uid
     })
 
+@app.route("/api/admin/usuarios/<usuario_uid>/expiracao", methods=["POST"])
+def api_admin_alterar_expiracao(usuario_uid):
+    uid = session.get("uid")
+
+    if not uid:
+        return jsonify({
+            "ok": False,
+            "erro": "Não autenticado."
+        }), 401
+
+    administrador = obter_usuario(uid)
+
+    if not administrador:
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Administrador não encontrado."
+        }), 401
+
+    if administrador.get("status") != "ativo":
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso suspenso."
+        }), 403
+
+    if administrador.get("perfil") != "admin":
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso permitido somente para administradores."
+        }), 403
+
+    if usuario_uid == uid:
+        return jsonify({
+            "ok": False,
+            "erro": "O administrador não pode alterar a própria data de expiração."
+        }), 400
+
+    dados = request.get_json(silent=True) or {}
+    nova_data = dados.get("expira_em")
+
+    if nova_data is not None:
+        try:
+            datetime.strptime(nova_data, "%Y-%m-%d")
+        except (TypeError, ValueError):
+            return jsonify({
+                "ok": False,
+                "erro": "Data de expiração inválida. Use o formato YYYY-MM-DD."
+            }), 400
+
+    referencia = db.reference(f"nexus/usuarios/{usuario_uid}")
+    usuario = referencia.get()
+
+    if not usuario:
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não encontrado."
+        }), 404
+
+    referencia.update({
+        "expira_em": nova_data
+    })
+
+    return jsonify({
+        "ok": True,
+        "mensagem": (
+            "Data de expiração atualizada com sucesso."
+            if nova_data
+            else "Data de expiração removida com sucesso."
+        ),
+        "expira_em": nova_data,
+        "uid": usuario_uid
+    })
+
+
 @app.route("/api/admin/usuarios/<usuario_uid>/status", methods=["POST"])
 def api_admin_alterar_status(usuario_uid):
     uid = session.get("uid")
