@@ -314,6 +314,13 @@ def obter_limites_usuario(uid):
             "consultas": 0
         }
 
+    if usuario.get("perfil") == "admin":
+        return {
+            "geracoes": 999999999,
+            "uploads": 999999999,
+            "consultas": 999999999
+        }
+
     plano = usuario.get("plano", "gratuito")
 
     return obter_limites_padrao(plano)
