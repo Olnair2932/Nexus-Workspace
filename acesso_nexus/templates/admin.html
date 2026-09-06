@@ -323,6 +323,12 @@ async function carregarUsuarios() {
         dados.usuarios.forEach(usuario => {
             const linha = document.createElement("tr");
 
+            console.log("NEXUS DEBUG USUARIO:", JSON.stringify(usuario));
+            console.log("NEXUS DEBUG UID ATUAL:", usuarioAtualUid);
+
+            console.log("NEXUS DEBUG USUARIO:", JSON.stringify(usuario));
+            console.log("NEXUS DEBUG UID ATUAL:", usuarioAtualUid);
+
             const status = usuario.status || "desconhecido";
             const classeStatus = status === "ativo" ? "ativo" : "outro";
 
