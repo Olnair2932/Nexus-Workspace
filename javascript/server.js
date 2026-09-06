@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
 const { execFile } = require("child_process");
@@ -11,6 +12,122 @@ dotenv.config({
     path: path.join(WORKSPACE, ".env"),
     quiet: true
 });
+
+
+const STUDIO_AUTH_SECRET = process.env.NEXUS_STUDIO_AUTH_SECRET || "";
+const ACESSO_URL = "https://nexus-acesso.onrender.com";
+const STUDIO_COOKIE = "nexus_studio_token";
+const STUDIO_TOKEN_MAX_AGE = 600;
+
+function base64urlDecode(valor) {
+    const padding = "=".repeat((4 - (valor.length % 4)) % 4);
+    return Buffer.from(valor + padding, "base64url");
+}
+
+function validarTokenStudio(token) {
+    if (!STUDIO_AUTH_SECRET || !token) return null;
+
+    try {
+        const partes = String(token).split(".");
+        if (partes.length !== 2) return null;
+
+        const [parteDados, parteAssinatura] = partes;
+
+        const assinaturaEsperada = crypto
+            .createHmac("sha256", STUDIO_AUTH_SECRET)
+            .update(parteDados)
+            .digest();
+
+        const assinaturaRecebida = base64urlDecode(parteAssinatura);
+
+        if (
+            assinaturaRecebida.length !== assinaturaEsperada.length ||
+            !crypto.timingSafeEqual(
+                assinaturaRecebida,
+                assinaturaEsperada
+            )
+        ) {
+            return null;
+        }
+
+        const payload = JSON.parse(
+            base64urlDecode(parteDados).toString("utf8")
+        );
+
+        if (!payload.uid) return null;
+        if (Number(payload.exp || 0) < Math.floor(Date.now() / 1000)) {
+            return null;
+        }
+
+        return payload;
+    } catch {
+        return null;
+    }
+}
+
+function obterCookie(req, nome) {
+    const cookies = String(req.headers.cookie || "")
+        .split(";")
+        .map(item => item.trim());
+
+    for (const cookie of cookies) {
+        const indice = cookie.indexOf("=");
+
+        if (indice === -1) continue;
+
+        const chave = cookie.slice(0, indice);
+        const valor = cookie.slice(indice + 1);
+
+        if (chave === nome) {
+            return decodeURIComponent(valor);
+        }
+    }
+
+    return null;
+}
+
+function obterTokenStudio(req) {
+    const tokenQuery = String(req.query?.nexus_token || "").trim();
+
+    if (tokenQuery) {
+        return tokenQuery;
+    }
+
+    return obterCookie(req, STUDIO_COOKIE);
+}
+
+function registrarUsoStudio(tipo, token) {
+    if (!token || !validarTokenStudio(token)) {
+        return Promise.resolve(false);
+    }
+
+    return fetch(`${ACESSO_URL}/api/studio/uso`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            token,
+            tipo
+        })
+    })
+    .then(async resposta => {
+        if (!resposta.ok) {
+            console.warn(
+                `[STUDIO] Falha ao registrar uso (${tipo}): HTTP ${resposta.status}`
+            );
+            return false;
+        }
+
+        return true;
+    })
+    .catch(erro => {
+        console.warn(
+            `[STUDIO] Não foi possível registrar uso (${tipo}): ${erro.message}`
+        );
+        return false;
+    });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -344,10 +461,12 @@ const uploadImagem = multer({
     }
 });
 
-app.post("/api/html/upload", uploadImagem.single("imagem"), (req, res) => {
+app.post("/api/html/upload", uploadImagem.single("imagem"), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ ok: false, erro: "Nenhuma imagem foi enviada." });
         const url = "/uploads/" + encodeURIComponent(req.file.filename);
+        const tokenStudio = obterTokenStudio(req);
+        await registrarUsoStudio("uploads", tokenStudio);
         return res.json({ ok: true, acao: "upload_imagem", arquivo: req.file.filename, url, tamanho: req.file.size, tipo: req.file.mimetype });
     } catch (erro) {
         return res.status(500).json({ ok: false, erro: "Erro ao processar imagem.", detalhe: erro.message });
@@ -355,7 +474,26 @@ app.post("/api/html/upload", uploadImagem.single("imagem"), (req, res) => {
 });
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(PUBLIC_DIR, "html_studio.html"));
+    const tokenQuery = String(req.query?.nexus_token || "").trim();
+
+    if (tokenQuery) {
+        const payload = validarTokenStudio(tokenQuery);
+
+        if (payload) {
+            res.setHeader(
+                "Set-Cookie",
+                `${STUDIO_COOKIE}=${encodeURIComponent(tokenQuery)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${STUDIO_TOKEN_MAX_AGE}`
+            );
+
+            return res.redirect("/");
+        }
+
+        return res.status(401).send("Autorização do Studio inválida ou expirada.");
+    }
+
+    return res.sendFile(
+        path.join(WORKSPACE, "html", "public", "html_studio.html")
+    );
 });
 
 app.get("/api/html/editar", async (req, res) => {
@@ -613,6 +751,8 @@ app.post("/api/html/gerar", async (req, res) => {
     indice.paginas = indice.paginas.filter(p => p.arquivo !== nomeArquivo);
     indice.paginas.unshift({ arquivo: nomeArquivo, titulo: nome, preco, descricao, imagem, criado_em: new Date().toISOString() });
     fs.writeFileSync(indexFile, JSON.stringify(indice, null, 2), "utf-8");
+    const tokenStudio = obterTokenStudio(req);
+    await registrarUsoStudio("geracoes", tokenStudio);
 
     // ========================================================
     // SINCRONIZAÇÃO AUTOMÁTICA COM FIREBASE

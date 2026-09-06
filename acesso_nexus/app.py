@@ -1,5 +1,9 @@
+import base64
+import hashlib
+import hmac
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, redirect, render_template, request, session
@@ -13,6 +17,8 @@ app.secret_key = os.environ.get("NEXUS_SESSION_SECRET", "trocar-esta-chave-no-re
 
 FIREBASE_DB_URL = "https://finance-master-629d1-default-rtdb.firebaseio.com"
 ADMIN_EMAIL = os.environ.get("NEXUS_ADMIN_EMAIL", "").strip().lower()
+STUDIO_AUTH_SECRET = os.environ.get("NEXUS_STUDIO_AUTH_SECRET", "").strip()
+STUDIO_URL = "https://nexus-html-studio.onrender.com"
 
 
 def inicializar_firebase():
@@ -44,6 +50,182 @@ def inicializar_firebase():
 
 
 inicializar_firebase()
+
+
+
+def codificar_base64url(valor):
+    return base64.urlsafe_b64encode(valor).decode().rstrip("=")
+
+
+def decodificar_base64url(valor):
+    padding = "=" * (-len(valor) % 4)
+    return base64.urlsafe_b64decode(valor + padding)
+
+
+def gerar_token_studio(uid, validade_segundos=600):
+    if not STUDIO_AUTH_SECRET:
+        raise RuntimeError(
+            "NEXUS_STUDIO_AUTH_SECRET não configurado no Render."
+        )
+
+    payload = {
+        "uid": uid,
+        "exp": int(time.time()) + validade_segundos
+    }
+
+    dados = json.dumps(
+        payload,
+        separators=(",", ":"),
+        sort_keys=True
+    ).encode()
+
+    parte_dados = codificar_base64url(dados).encode()
+
+    assinatura = hmac.new(
+        STUDIO_AUTH_SECRET.encode(),
+        parte_dados,
+        hashlib.sha256
+    ).digest()
+
+    return (
+        parte_dados.decode()
+        + "."
+        + codificar_base64url(assinatura)
+    )
+
+
+def validar_token_studio(token):
+    if not STUDIO_AUTH_SECRET or not token:
+        return None
+
+    try:
+        partes = token.split(".")
+        if len(partes) != 2:
+            return None
+
+        parte_dados, parte_assinatura = partes
+
+        assinatura_esperada = hmac.new(
+            STUDIO_AUTH_SECRET.encode(),
+            parte_dados.encode(),
+            hashlib.sha256
+        ).digest()
+
+        assinatura_recebida = decodificar_base64url(
+            parte_assinatura
+        )
+
+        if not hmac.compare_digest(
+            assinatura_recebida,
+            assinatura_esperada
+        ):
+            return None
+
+        payload = json.loads(
+            decodificar_base64url(parte_dados).decode()
+        )
+
+        if int(payload.get("exp", 0)) < int(time.time()):
+            return None
+
+        uid = str(payload.get("uid", "")).strip()
+
+        if not uid:
+            return None
+
+        usuario = obter_usuario(uid)
+
+        if not usuario:
+            return None
+
+        if usuario.get("status") != "ativo":
+            return None
+
+        return {
+            "uid": uid,
+            "usuario": usuario
+        }
+
+    except Exception:
+        return None
+
+
+@app.route("/api/studio/abrir")
+def abrir_studio():
+    uid = session.get("uid")
+
+    if not uid:
+        return redirect("/")
+
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        session.clear()
+        return redirect("/")
+
+    if usuario.get("status") != "ativo":
+        session.clear()
+        return redirect("/")
+
+    try:
+        token = gerar_token_studio(uid)
+    except RuntimeError as erro:
+        return jsonify({
+            "ok": False,
+            "erro": str(erro)
+        }), 500
+
+    return redirect(
+        f"{STUDIO_URL}/?nexus_token={token}"
+    )
+
+
+@app.route("/api/studio/uso", methods=["POST"])
+def registrar_uso_studio():
+    dados = request.get_json(silent=True) or {}
+
+    token = str(dados.get("token", "")).strip()
+    tipo = str(dados.get("tipo", "")).strip()
+
+    autenticacao = validar_token_studio(token)
+
+    if not autenticacao:
+        return jsonify({
+            "ok": False,
+            "erro": "Autorização do Studio inválida ou expirada."
+        }), 401
+
+    tipos_permitidos = (
+        "geracoes",
+        "uploads",
+        "consultas"
+    )
+
+    if tipo not in tipos_permitidos:
+        return jsonify({
+            "ok": False,
+            "erro": "Tipo de uso inválido."
+        }), 400
+
+    try:
+        registrar_uso_usuario(
+            autenticacao["uid"],
+            tipo,
+            1
+        )
+
+        return jsonify({
+            "ok": True,
+            "uid": autenticacao["uid"],
+            "tipo": tipo
+        })
+
+    except Exception as erro:
+        return jsonify({
+            "ok": False,
+            "erro": "Não foi possível registrar o uso.",
+            "detalhe": str(erro)
+        }), 500
 
 
 def agora_iso():
