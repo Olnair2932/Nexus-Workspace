@@ -94,6 +94,13 @@
             font-weight: 700;
         }
 
+        .uso-restante {
+            display: block;
+            margin-top: 6px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
         a {
             display: inline-block;
             padding: 13px 18px;
@@ -166,6 +173,10 @@
                         /
                         {{ resumo_uso.limites.geracoes }}
                     </span>
+                    <span class="uso-restante">
+                        Restantes:
+                        {{ resumo_uso.limites.geracoes - resumo_uso.uso.geracoes }}
+                    </span>
                 </div>
 
                 <div class="uso-item">
@@ -175,6 +186,10 @@
                         /
                         {{ resumo_uso.limites.uploads }}
                     </span>
+                    <span class="uso-restante">
+                        Restantes:
+                        {{ resumo_uso.limites.uploads - resumo_uso.uso.uploads }}
+                    </span>
                 </div>
 
                 <div class="uso-item">
@@ -183,6 +198,10 @@
                         {{ resumo_uso.uso.consultas }}
                         /
                         {{ resumo_uso.limites.consultas }}
+                    </span>
+                    <span class="uso-restante">
+                        Restantes:
+                        {{ resumo_uso.limites.consultas - resumo_uso.uso.consultas }}
                     </span>
                 </div>
 
