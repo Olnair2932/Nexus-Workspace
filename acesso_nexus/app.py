@@ -239,6 +239,8 @@ def criar_ou_atualizar_usuario(usuario_firebase):
 
     referencia.set(dados)
 
+    inicializar_uso_usuario(uid, plano)
+
     return dados
 
 
