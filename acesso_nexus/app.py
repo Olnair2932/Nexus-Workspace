@@ -377,7 +377,13 @@ def painel():
         session.clear()
         return redirect("/")
 
-    return render_template("painel.html", usuario=usuario)
+    resumo_uso = obter_resumo_uso(uid)
+
+    return render_template(
+        "painel.html",
+        usuario=usuario,
+        resumo_uso=resumo_uso
+    )
 
 
 @app.route("/api/admin/usuarios")

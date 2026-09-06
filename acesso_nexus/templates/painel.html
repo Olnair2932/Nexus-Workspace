@@ -65,6 +65,35 @@
             color: #86efac;
         }
 
+        .uso-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .uso-item {
+            padding: 14px;
+            border-radius: 12px;
+            background: #0f172a;
+        }
+
+        .uso-titulo {
+            display: block;
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .uso-valor {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .uso-plano {
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
         a {
             display: inline-block;
             padding: 13px 18px;
@@ -118,6 +147,47 @@
 
         </div>
 
+    </div>
+
+    <div class="card">
+        <h2>📊 Meu uso</h2>
+
+        {% if resumo_uso %}
+            <div class="uso-plano">
+                Plano: {{ resumo_uso.plano }}
+            </div>
+
+            <div class="uso-grid">
+
+                <div class="uso-item">
+                    <span class="uso-titulo">Gerações</span>
+                    <span class="uso-valor">
+                        {{ resumo_uso.uso.geracoes }}
+                        /
+                        {{ resumo_uso.limites.geracoes }}
+                    </span>
+                </div>
+
+                <div class="uso-item">
+                    <span class="uso-titulo">Uploads</span>
+                    <span class="uso-valor">
+                        {{ resumo_uso.uso.uploads }}
+                        /
+                        {{ resumo_uso.limites.uploads }}
+                    </span>
+                </div>
+
+                <div class="uso-item">
+                    <span class="uso-titulo">Consultas</span>
+                    <span class="uso-valor">
+                        {{ resumo_uso.uso.consultas }}
+                        /
+                        {{ resumo_uso.limites.consultas }}
+                    </span>
+                </div>
+
+            </div>
+        {% endif %}
     </div>
 
     <div class="card">
