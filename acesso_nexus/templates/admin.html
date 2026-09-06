@@ -142,6 +142,35 @@
     min-width: 135px;
 }
 
+.opcoes-planos {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 135px;
+}
+
+.botao-plano {
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 12px;
+    background: #334155;
+    color: #f8fafc;
+    text-align: left;
+}
+
+.botao-plano:hover {
+    background: #475569;
+}
+
+.botao-plano.selecionado {
+    background: #2563eb;
+    border-color: #60a5fa;
+    color: #ffffff;
+}
+
 .plano-atual {
     font-weight: 700;
     text-transform: capitalize;
@@ -323,12 +352,6 @@ async function carregarUsuarios() {
         dados.usuarios.forEach(usuario => {
             const linha = document.createElement("tr");
 
-            console.log("NEXUS DEBUG USUARIO:", JSON.stringify(usuario));
-            console.log("NEXUS DEBUG UID ATUAL:", usuarioAtualUid);
-
-            console.log("NEXUS DEBUG USUARIO:", JSON.stringify(usuario));
-            console.log("NEXUS DEBUG UID ATUAL:", usuarioAtualUid);
-
             const status = usuario.status || "desconhecido";
             const classeStatus = status === "ativo" ? "ativo" : "outro";
 
@@ -341,15 +364,39 @@ async function carregarUsuarios() {
                         usuario.uid === usuarioAtualUid
                             ? `<span class="plano-atual">${escaparHTML(usuario.plano || "gratuito")}</span>`
                             : `
-                                <select
-                                    class="seletor-plano"
-                                    onchange="alterarPlano('${escaparHTML(usuario.uid)}', this.value, '${escaparHTML(usuario.plano || "gratuito")}')"
-                                >
-                                    <option value="gratuito" ${(usuario.plano || "gratuito") === "gratuito" ? "selected" : ""}>🆓 Gratuito</option>
-                                    <option value="basico" ${usuario.plano === "basico" ? "selected" : ""}>⭐ Básico</option>
-                                    <option value="pro" ${usuario.plano === "pro" ? "selected" : ""}>🚀 Pro</option>
-                                    <option value="premium" ${usuario.plano === "premium" ? "selected" : ""}>👑 Premium</option>
-                                </select>
+                                <div class="opcoes-planos">
+                                    <button
+                                        type="button"
+                                        class="botao-plano ${(usuario.plano || "gratuito") === "gratuito" ? "selecionado" : ""}"
+                                        onclick="alterarPlano('${escaparHTML(usuario.uid)}', 'gratuito', '${escaparHTML(usuario.plano || "gratuito")}')"
+                                    >
+                                        🆓 Gratuito
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="botao-plano ${usuario.plano === "basico" ? "selecionado" : ""}"
+                                        onclick="alterarPlano('${escaparHTML(usuario.uid)}', 'basico', '${escaparHTML(usuario.plano || "gratuito")}')"
+                                    >
+                                        ⭐ Básico
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="botao-plano ${usuario.plano === "pro" ? "selecionado" : ""}"
+                                        onclick="alterarPlano('${escaparHTML(usuario.uid)}', 'pro', '${escaparHTML(usuario.plano || "gratuito")}')"
+                                    >
+                                        🚀 Pro
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="botao-plano ${usuario.plano === "premium" ? "selecionado" : ""}"
+                                        onclick="alterarPlano('${escaparHTML(usuario.uid)}', 'premium', '${escaparHTML(usuario.plano || "gratuito")}')"
+                                    >
+                                        👑 Premium
+                                    </button>
+                                </div>
                               `
                     }
                 </td>
