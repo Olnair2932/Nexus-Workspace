@@ -171,6 +171,49 @@
     color: #ffffff;
 }
 
+
+        .opcoes-expiracao {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 165px;
+        }
+
+        .campo-expiracao {
+            width: 100%;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 8px 9px;
+            background: #0f172a;
+            color: #f8fafc;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .acoes-expiracao {
+            display: flex;
+            gap: 5px;
+        }
+
+        .botao-expiracao {
+            border: 0;
+            border-radius: 7px;
+            padding: 6px 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .botao-expiracao.salvar {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .botao-expiracao.limpar {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
 .plano-atual {
     font-weight: 700;
     text-transform: capitalize;
@@ -290,6 +333,7 @@
                         <th>E-mail</th>
                         <th>Perfil</th>
                         <th>Plano</th>
+                        <th>Expiração</th>
                         <th>Status</th>
                         <th>Último acesso</th>
                         <th>Ação</th>
@@ -396,6 +440,38 @@ async function carregarUsuarios() {
                                     >
                                         👑 Premium
                                     </button>
+                                </div>
+                              `
+                    }
+                </td>
+                <td>
+                    ${
+                        usuario.uid === usuarioAtualUid
+                            ? '<span class="acao-propria">Sua conta</span>'
+                            : `
+                                <div class="opcoes-expiracao">
+                                    <input
+                                        type="date"
+                                        class="campo-expiracao"
+                                        id="expiracao-${escaparHTML(usuario.uid)}"
+                                        value="${escaparHTML(usuario.expira_em || "")}"
+                                    >
+                                    <div class="acoes-expiracao">
+                                        <button
+                                            type="button"
+                                            class="botao-expiracao salvar"
+                                            onclick="alterarExpiracao('${escaparHTML(usuario.uid)}')"
+                                        >
+                                            💾 Salvar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="botao-expiracao limpar"
+                                            onclick="limparExpiracao('${escaparHTML(usuario.uid)}')"
+                                        >
+                                            🗑️ Limpar
+                                        </button>
+                                    </div>
                                 </div>
                               `
                     }
@@ -531,6 +607,92 @@ async function alterarPlano(uid, planoAtual, planoAnterior) {
     }
 }
 
+
+async function alterarExpiracao(uid) {
+    const campo = document.getElementById(`expiracao-${uid}`);
+
+    if (!campo) {
+        return;
+    }
+
+    const novaData = campo.value || null;
+
+    const mensagemConfirmacao = novaData
+        ? `Deseja definir a expiração deste usuário para ${formatarDataExpiracao(novaData)}?`
+        : "Deseja remover a data de expiração deste usuário?";
+
+    if (!confirm(mensagemConfirmacao)) {
+        return;
+    }
+
+    try {
+        const resposta = await fetch(
+            `/api/admin/usuarios/${encodeURIComponent(uid)}/expiracao`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    expira_em: novaData
+                })
+            }
+        );
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.ok) {
+            throw new Error(
+                dados.erro ||
+                "Não foi possível alterar a data de expiração."
+            );
+        }
+
+        alert("✅ " + dados.mensagem);
+        await carregarUsuarios();
+
+    } catch (erro) {
+        console.error("NEXUS ADMIN EXPIRAÇÃO:", erro);
+
+        alert(
+            "❌ " +
+            (erro.message ||
+            "Não foi possível alterar a data de expiração.")
+        );
+
+        await carregarUsuarios();
+    }
+}
+
+async function limparExpiracao(uid) {
+    const campo = document.getElementById(`expiracao-${uid}`);
+
+    if (!campo) {
+        return;
+    }
+
+    if (!campo.value) {
+        return;
+    }
+
+    campo.value = "";
+
+    await alterarExpiracao(uid);
+}
+
+function formatarDataExpiracao(valor) {
+    if (!valor) {
+        return "sem expiração";
+    }
+
+    const partes = valor.split("-");
+
+    if (partes.length !== 3) {
+        return valor;
+    }
+
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
 
 async function alterarStatus(uid, statusAtual) {
     const novoStatus =
