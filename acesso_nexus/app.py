@@ -76,6 +76,140 @@ def listar_usuarios():
     return usuarios
 
 
+
+def obter_limites_padrao(plano):
+    limites = {
+        "gratuito": {
+            "geracoes": 5,
+            "uploads": 2,
+            "consultas": 20
+        },
+        "basico": {
+            "geracoes": 20,
+            "uploads": 10,
+            "consultas": 50
+        },
+        "pro": {
+            "geracoes": 50,
+            "uploads": 30,
+            "consultas": 150
+        },
+        "premium": {
+            "geracoes": 200,
+            "uploads": 100,
+            "consultas": 500
+        }
+    }
+
+    return limites.get(
+        plano,
+        limites["gratuito"]
+    )
+
+
+def obter_uso_usuario(uid):
+    referencia = db.reference(
+        f"nexus/acesso/usuarios/{uid}/uso"
+    )
+
+    uso = referencia.get() or {}
+
+    return {
+        "geracoes": int(uso.get("geracoes", 0) or 0),
+        "uploads": int(uso.get("uploads", 0) or 0),
+        "consultas": int(uso.get("consultas", 0) or 0),
+        "ultimo_reset": uso.get("ultimo_reset")
+    }
+
+
+def obter_limites_usuario(uid):
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        return {
+            "geracoes": 0,
+            "uploads": 0,
+            "consultas": 0
+        }
+
+    plano = usuario.get("plano", "gratuito")
+
+    return obter_limites_padrao(plano)
+
+
+def inicializar_uso_usuario(uid, plano="gratuito"):
+    referencia = db.reference(
+        f"nexus/acesso/usuarios/{uid}"
+    )
+
+    limites = obter_limites_padrao(plano)
+
+    dados = referencia.get() or {}
+
+    if "limites" not in dados:
+        referencia.child("limites").set(limites)
+
+    if "uso" not in dados:
+        referencia.child("uso").set({
+            "geracoes": 0,
+            "uploads": 0,
+            "consultas": 0,
+            "ultimo_reset": agora_iso()
+        })
+
+
+def registrar_uso_usuario(uid, tipo, quantidade=1):
+    tipos_permitidos = (
+        "geracoes",
+        "uploads",
+        "consultas"
+    )
+
+    if tipo not in tipos_permitidos:
+        raise ValueError(
+            "Tipo de uso inválido."
+        )
+
+    quantidade = int(quantidade)
+
+    if quantidade < 1:
+        raise ValueError(
+            "A quantidade deve ser maior que zero."
+        )
+
+    referencia = db.reference(
+        f"nexus/acesso/usuarios/{uid}/uso/{tipo}"
+    )
+
+    atual = referencia.get() or 0
+
+    referencia.set(
+        int(atual) + quantidade
+    )
+
+
+def obter_resumo_uso(uid):
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        return None
+
+    plano = usuario.get("plano", "gratuito")
+
+    limites = usuario.get("limites")
+
+    if not isinstance(limites, dict):
+        limites = obter_limites_padrao(plano)
+
+    uso = obter_uso_usuario(uid)
+
+    return {
+        "plano": plano,
+        "limites": limites,
+        "uso": uso
+    }
+
+
 def criar_ou_atualizar_usuario(usuario_firebase):
     uid = usuario_firebase["uid"]
     email = (usuario_firebase.get("email") or "").strip().lower()
