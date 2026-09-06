@@ -51,12 +51,12 @@ def agora_iso():
 
 
 def obter_usuario(uid):
-    referencia = db.reference(f"nexus/usuarios/{uid}")
+    referencia = db.reference(f"nexus/acesso/usuarios/{uid}")
     return referencia.get()
 
 
 def listar_usuarios():
-    referencia = db.reference("nexus/usuarios")
+    referencia = db.reference("nexus/acesso/usuarios")
     dados = referencia.get() or {}
 
     usuarios = []
@@ -81,7 +81,7 @@ def criar_ou_atualizar_usuario(usuario_firebase):
     email = (usuario_firebase.get("email") or "").strip().lower()
     nome = usuario_firebase.get("name") or email or "Usuário NEXUS"
 
-    referencia = db.reference(f"nexus/usuarios/{uid}")
+    referencia = db.reference(f"nexus/acesso/usuarios/{uid}")
     usuario_existente = referencia.get() or {}
 
     perfil = usuario_existente.get("perfil")
@@ -344,7 +344,7 @@ def api_admin_alterar_plano(usuario_uid):
             )
         }), 400
 
-    referencia = db.reference(f"nexus/usuarios/{usuario_uid}")
+    referencia = db.reference(f"nexus/acesso/usuarios/{usuario_uid}")
     usuario = referencia.get()
 
     if not usuario:
@@ -414,7 +414,7 @@ def api_admin_alterar_expiracao(usuario_uid):
                 "erro": "Data de expiração inválida. Use o formato YYYY-MM-DD."
             }), 400
 
-    referencia = db.reference(f"nexus/usuarios/{usuario_uid}")
+    referencia = db.reference(f"nexus/acesso/usuarios/{usuario_uid}")
     usuario = referencia.get()
 
     if not usuario:
@@ -486,7 +486,7 @@ def api_admin_alterar_status(usuario_uid):
             "erro": "Status inválido. Use ativo ou suspenso."
         }), 400
 
-    referencia = db.reference(f"nexus/usuarios/{usuario_uid}")
+    referencia = db.reference(f"nexus/acesso/usuarios/{usuario_uid}")
     usuario = referencia.get()
 
     if not usuario:
@@ -538,6 +538,71 @@ def admin():
 def logout():
     session.clear()
     return redirect("/")
+
+
+
+@app.route("/api/admin/migrar-usuarios")
+def api_admin_migrar_usuarios():
+    uid = session.get("uid")
+
+    if not uid:
+        return jsonify({
+            "ok": False,
+            "erro": "Não autenticado."
+        }), 401
+
+    administrador = db.reference(
+        f"nexus/usuarios/{uid}"
+    ).get()
+
+    if not administrador:
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Administrador não encontrado no nó antigo."
+        }), 401
+
+    if administrador.get("status") != "ativo":
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso suspenso."
+        }), 403
+
+    if administrador.get("perfil") != "admin":
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso permitido somente para administradores."
+        }), 403
+
+    origem = db.reference("nexus/usuarios")
+    destino = db.reference("nexus/acesso/usuarios")
+
+    usuarios = origem.get() or {}
+
+    if not isinstance(usuarios, dict):
+        return jsonify({
+            "ok": False,
+            "erro": "O nó nexus/usuarios não contém dados válidos."
+        }), 500
+
+    copiados = 0
+
+    for usuario_uid, dados in usuarios.items():
+        if not isinstance(dados, dict):
+            continue
+
+        destino.child(usuario_uid).set(dados)
+        copiados += 1
+
+    return jsonify({
+        "ok": True,
+        "mensagem": "Migração concluída sem apagar o nó antigo.",
+        "origem": "nexus/usuarios",
+        "destino": "nexus/acesso/usuarios",
+        "total_encontrados": len(usuarios),
+        "total_copiados": copiados
+    })
 
 
 @app.route("/health")
