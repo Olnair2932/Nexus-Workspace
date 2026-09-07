@@ -232,10 +232,15 @@
     </div>
 
     <div class="card" id="NEXUS_PLANOS_PIX">
-        <h2>💳 Escolha seu plano</h2>
+        <h2>💳 {% if usuario.plano == "gratuito" %}Contratar um plano{% else %}Renovar ou trocar de plano{% endif %}</h2>
 
         <p style="color:#94a3b8;">
-            Escolha o plano que deseja contratar.
+            {% if usuario.plano == "gratuito" %}
+                Escolha o plano que deseja contratar.
+            {% else %}
+                Seu plano atual é <strong>{{ usuario.plano|capitalize }}</strong>.
+                Escolha o plano que deseja renovar ou trocar.
+            {% endif %}
         </p>
 
         <div style="display:grid;gap:12px;margin-top:18px;">
@@ -282,17 +287,34 @@
 <script>
 async function contratarPlano(plano, nomePlano, valor) {
 
+    const planoAtual = "{{ usuario.plano }}";
+    const possuiPlano = planoAtual !== "gratuito";
+
+    const tipoOperacao =
+        planoAtual === plano
+            ? "RENOVAÇÃO"
+            : possuiPlano
+                ? "TROCA DE PLANO"
+                : "CONTRATAÇÃO";
+
     const confirmar = confirm(
         "💳 PAGAMENTO VIA PIX\n\n" +
-        "Plano: " + nomePlano + "\n" +
+        tipoOperacao + "\n\n" +
+        "Plano escolhido: " + nomePlano + "\n" +
         "Valor: R$ " + valor + "\n\n" +
+        (possuiPlano
+            ? "Seu plano atual: " + planoAtual + "\n\n"
+            : "") +
         "Chave Pix:\n" +
         "55981011208\n\n" +
-        "Ao aceitar, seu plano será ativado imediatamente.\n\n" +
-        "Depois realize o pagamento e envie o comprovante pelo WhatsApp.\n\n" +
-        "⚠️ O pagamento deverá ser confirmado em até 24 horas. " +
-        "Caso não seja confirmado, o administrador poderá suspender o plano.\n\n" +
-        "Deseja aceitar e ativar o plano?"
+        "⚠️ IMPORTANTE:\n" +
+        "Ao aceitar, sua solicitação será registrada para confirmação.\n" +
+        "O plano NÃO será ativado imediatamente.\n\n" +
+        "Depois faça o pagamento via Pix e envie o comprovante pelo WhatsApp.\n\n" +
+        "📱 WhatsApp: 55981011208\n\n" +
+        "⏱️ O pagamento deverá ser confirmado em até 24 horas.\n" +
+        "Caso não seja confirmado, o administrador poderá suspender a solicitação.\n\n" +
+        "Deseja registrar esta solicitação?"
     );
 
     if (!confirmar) {
@@ -315,14 +337,16 @@ async function contratarPlano(plano, nomePlano, valor) {
 
         if (!resposta.ok || !dados.ok) {
             alert(
-                "❌ Não foi possível contratar o plano.\n\n" +
+                "❌ Não foi possível registrar a solicitação.\n\n" +
                 (dados.erro || "Erro desconhecido.")
             );
             return;
         }
 
         const mensagem =
-            "Olá! Acabei de contratar o plano " +
+            "Olá! Solicitei " +
+            tipoOperacao.toLowerCase() +
+            " do plano " +
             nomePlano +
             " do NEXUS.\n\n" +
             "Valor: R$ " +
@@ -335,10 +359,13 @@ async function contratarPlano(plano, nomePlano, valor) {
             encodeURIComponent(mensagem);
 
         const enviar = confirm(
-            "✅ Plano " + nomePlano + " ativado!\n\n" +
+            "✅ SOLICITAÇÃO REGISTRADA!\n\n" +
+            "Plano solicitado: " + nomePlano + "\n" +
             "Valor: R$ " + valor + "\n\n" +
-            "Chave Pix: 55981011208\n\n" +
+            "💳 Chave Pix: 55981011208\n\n" +
+            "⚠️ O plano ainda NÃO foi ativado.\n\n" +
             "Agora faça o pagamento via Pix e envie o comprovante pelo WhatsApp.\n\n" +
+            "Depois, aguarde a confirmação do administrador.\n\n" +
             "Deseja abrir o WhatsApp agora?"
         );
 
@@ -355,8 +382,7 @@ async function contratarPlano(plano, nomePlano, valor) {
             erro.message
         );
     }
-}
-</script>
+}</script>
 
 </body>
 </html>
