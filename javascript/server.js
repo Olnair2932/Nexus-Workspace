@@ -98,7 +98,11 @@ function obterTokenStudio(req) {
 
 function registrarUsoStudio(tipo, token) {
     if (!token || !validarTokenStudio(token)) {
-        return Promise.resolve(false);
+        const erro = new Error(
+            "Autorização do Studio inválida ou expirada."
+        );
+        erro.codigo = "STUDIO_AUTH_INVALIDA";
+        throw erro;
     }
 
     return fetch(`${ACESSO_URL}/api/studio/uso`, {
@@ -113,10 +117,38 @@ function registrarUsoStudio(tipo, token) {
     })
     .then(async resposta => {
         if (!resposta.ok) {
-            console.warn(
-                `[STUDIO] Falha ao registrar uso (${tipo}): HTTP ${resposta.status}`
+            let dados = {};
+
+            try {
+                dados = await resposta.json();
+            } catch (_) {
+                dados = {};
+            }
+
+            if (
+                resposta.status === 403 &&
+                dados.limite_atingido === true
+            ) {
+                const erro = new Error(
+                    dados.erro || `Limite de ${tipo} atingido.`
+                );
+
+                erro.codigo = "LIMITE_ATINGIDO";
+                erro.limiteAtingido = true;
+                erro.tipo = tipo;
+
+                throw erro;
+            }
+
+            const erro = new Error(
+                dados.erro ||
+                `Falha ao registrar uso (${tipo}): HTTP ${resposta.status}`
             );
-            return false;
+
+            erro.codigo = "REGISTRO_USO_FALHOU";
+            erro.status = resposta.status;
+
+            throw erro;
         }
 
         return true;
@@ -125,7 +157,7 @@ function registrarUsoStudio(tipo, token) {
         console.warn(
             `[STUDIO] Não foi possível registrar uso (${tipo}): ${erro.message}`
         );
-        return false;
+        throw erro;
     });
 }
 
@@ -463,13 +495,50 @@ const uploadImagem = multer({
 
 app.post("/api/html/upload", uploadImagem.single("imagem"), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ ok: false, erro: "Nenhuma imagem foi enviada." });
-        const url = "/uploads/" + encodeURIComponent(req.file.filename);
+        if (!req.file) {
+            return res.status(400).json({
+                ok: false,
+                erro: "Nenhuma imagem foi enviada."
+            });
+        }
+
         const tokenStudio = obterTokenStudio(req);
-        await registrarUsoStudio("uploads", tokenStudio);
-        return res.json({ ok: true, acao: "upload_imagem", arquivo: req.file.filename, url, tamanho: req.file.size, tipo: req.file.mimetype });
+
+        try {
+            await registrarUsoStudio("uploads", tokenStudio);
+        } catch (erroUso) {
+            if (req.file?.path && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+
+            if (erroUso.codigo === "LIMITE_ATINGIDO") {
+                return res.status(403).json({
+                    ok: false,
+                    erro: erroUso.message,
+                    limite_atingido: true,
+                    tipo: "uploads"
+                });
+            }
+
+            throw erroUso;
+        }
+
+        const url = "/uploads/" + encodeURIComponent(req.file.filename);
+
+        return res.json({
+            ok: true,
+            acao: "upload_imagem",
+            arquivo: req.file.filename,
+            url,
+            tamanho: req.file.size,
+            tipo: req.file.mimetype
+        });
     } catch (erro) {
-        return res.status(500).json({ ok: false, erro: "Erro ao processar imagem.", detalhe: erro.message });
+        return res.status(500).json({
+            ok: false,
+            erro: "Erro ao processar imagem.",
+            detalhe: erro.message
+        });
     }
 });
 
@@ -718,6 +787,27 @@ app.post("/api/html/gerar", async (req, res) => {
     let solicitacao = `Crie um anúncio HTML profissional para o produto "${nome}".\nPreço: ${preco}\nDescrição:\n${descricao}\n\nREQUISITOS OBRIGATÓRIOS:\n- Criar uma página HTML completa.\n- Design moderno, profissional e responsivo.\n- Criar uma área de imagem do produto.\n- Criar botão "Comprar pelo WhatsApp".\n- Criar botão "Compartilhar página".\n- O botão WhatsApp deve funcionar.\n- O botão Compartilhar deve usar a API nativa navigator.share quando disponível.\n- Criar fallback de compartilhamento/cópia do endereço quando navigator.share não estiver disponível.\n- Não utilizar GEMINI_API_KEY no HTML.\n- Não colocar nenhuma chave de API no JavaScript do navegador.\n`;
     if (imagem) solicitacao += `\nA imagem real do produto está disponível nesta URL:\n${imagem}\nUse essa URL como imagem principal do produto no HTML.\n`;
 
+    const tokenStudio = obterTokenStudio(req);
+
+    try {
+        await registrarUsoStudio("geracoes", tokenStudio);
+    } catch (erroUso) {
+        if (erroUso.codigo === "LIMITE_ATINGIDO") {
+            return res.status(403).json({
+                ok: false,
+                erro: erroUso.message,
+                limite_atingido: true,
+                tipo: "geracoes"
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Não foi possível registrar o uso da geração.",
+            detalhe: erroUso.message
+        });
+    }
+
     const gerador = path.join(PYTHON_DIR, "gerar_codigo.py");
     const resultado = await new Promise((resolve) => {
         execFile("python3", [gerador, solicitacao], { cwd: WORKSPACE, env: process.env, timeout: 180000, maxBuffer: 30 * 1024 * 1024 }, (erro, stdout, stderr) => {
@@ -751,9 +841,6 @@ app.post("/api/html/gerar", async (req, res) => {
     indice.paginas = indice.paginas.filter(p => p.arquivo !== nomeArquivo);
     indice.paginas.unshift({ arquivo: nomeArquivo, titulo: nome, preco, descricao, imagem, criado_em: new Date().toISOString() });
     fs.writeFileSync(indexFile, JSON.stringify(indice, null, 2), "utf-8");
-    const tokenStudio = obterTokenStudio(req);
-    await registrarUsoStudio("geracoes", tokenStudio);
-
     // ========================================================
     // SINCRONIZAÇÃO AUTOMÁTICA COM FIREBASE
     // O HTML e o index.json já foram salvos antes desta etapa.
