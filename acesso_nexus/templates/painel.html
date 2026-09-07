@@ -164,6 +164,27 @@
                 Plano: {{ resumo_uso.plano }}
             </div>
 
+            {% if session.perfil == "admin" %}
+                <div class="uso-grid">
+                    <div class="uso-item">
+                        <span class="uso-titulo">Gerações</span>
+                        <span class="uso-valor">∞</span>
+                        <span class="uso-restante">Ilimitado</span>
+                    </div>
+
+                    <div class="uso-item">
+                        <span class="uso-titulo">Uploads</span>
+                        <span class="uso-valor">∞</span>
+                        <span class="uso-restante">Ilimitado</span>
+                    </div>
+
+                    <div class="uso-item">
+                        <span class="uso-titulo">Consultas</span>
+                        <span class="uso-valor">∞</span>
+                        <span class="uso-restante">Ilimitado</span>
+                    </div>
+                </div>
+            {% else %}
             <div class="uso-grid">
 
                 <div class="uso-item">
@@ -207,6 +228,7 @@
 
             </div>
         {% endif %}
+            {% endif %}
     </div>
 
     <div class="card">
