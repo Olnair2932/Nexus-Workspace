@@ -220,6 +220,14 @@ def registrar_uso_studio():
             "tipo": tipo
         })
 
+    except PermissionError as erro:
+        return jsonify({
+            "ok": False,
+            "erro": str(erro),
+            "limite_atingido": True,
+            "tipo": tipo
+        }), 403
+
     except Exception as erro:
         return jsonify({
             "ok": False,
@@ -366,14 +374,33 @@ def registrar_uso_usuario(uid, tipo, quantidade=1):
             "A quantidade deve ser maior que zero."
         )
 
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        raise ValueError(
+            "Usuário não encontrado."
+        )
+
+    limites = obter_limites_usuario(uid)
+
+    limite = int(limites.get(tipo, 0) or 0)
+
     referencia = db.reference(
         f"nexus/acesso/usuarios/{uid}/uso/{tipo}"
     )
 
     atual = referencia.get() or 0
+    atual = int(atual)
+
+    if atual + quantidade > limite:
+        raise PermissionError(
+            f"Limite de {tipo} atingido. "
+            f"Uso atual: {atual}. "
+            f"Limite: {limite}."
+        )
 
     referencia.set(
-        int(atual) + quantidade
+        atual + quantidade
     )
 
 
