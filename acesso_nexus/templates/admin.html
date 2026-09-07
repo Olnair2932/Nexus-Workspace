@@ -399,6 +399,10 @@ async function carregarUsuarios() {
             const status = usuario.status || "desconhecido";
             const classeStatus = status === "ativo" ? "ativo" : "outro";
 
+            const pagamento = usuario.pagamento_plano || {};
+            const pagamentoPendente =
+                pagamento.status === "aguardando_confirmacao";
+
             linha.innerHTML = `
                 <td>${escaparHTML(usuario.nome || "Sem nome")}</td>
                 <td>${escaparHTML(usuario.email || "Sem e-mail")}</td>
@@ -445,6 +449,28 @@ async function carregarUsuarios() {
                     }
                 </td>
                 <td>
+                    ${
+                        pagamentoPendente
+                            ? `
+                                <div style="margin-top:10px;padding:10px;border:1px solid #f59e0b;border-radius:10px;background:#451a03;color:#fef3c7;">
+                                    <strong>💳 Pix aguardando confirmação</strong>
+                                    <div style="margin-top:5px;font-size:13px;">
+                                        Plano: ${escaparHTML(pagamento.nome_plano || pagamento.plano_solicitado || "—")}
+                                    </div>
+                                    <div style="font-size:13px;">
+                                        Valor: R$ ${Number(pagamento.valor || 0).toFixed(2).replace(".", ",")}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        style="margin-top:8px;padding:9px 12px;border:0;border-radius:8px;cursor:pointer;font-weight:700;background:#16a34a;color:white;"
+                                        onclick="confirmarPagamento('${escaparHTML(usuario.uid)}')"
+                                    >
+                                        ✅ Confirmar Pix
+                                    </button>
+                                </div>
+                              `
+                            : ""
+                    }
                     ${
                         usuario.uid === usuarioAtualUid
                             ? '<span class="acao-propria">Sua conta</span>'
@@ -542,6 +568,72 @@ function formatarData(valor) {
     return data.toLocaleString("pt-BR");
 }
 
+
+async function confirmarPagamento(uid) {
+
+    const confirmacao = confirm(
+        "💳 CONFIRMAR PAGAMENTO PIX\n\n" +
+        "Confirme somente depois de verificar o comprovante do pagamento.\n\n" +
+        "Ao confirmar, o sistema irá:\n" +
+        "• ativar o plano solicitado\n" +
+        "• aplicar os limites do plano\n" +
+        "• zerar o uso do período\n" +
+        "• iniciar a validade de 30 dias\n\n" +
+        "Deseja confirmar este pagamento?"
+    );
+
+    if (!confirmacao) {
+        return;
+    }
+
+    try {
+
+        const resposta = await fetch(
+            `/api/admin/usuarios/${encodeURIComponent(uid)}/confirmar-pagamento`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.ok) {
+            throw new Error(
+                dados.erro ||
+                "Não foi possível confirmar o pagamento."
+            );
+        }
+
+        alert(
+            "✅ PAGAMENTO CONFIRMADO!\n\n" +
+            "Plano: " + (dados.nome_plano || dados.plano) + "\n" +
+            "Valor: R$ " +
+            Number(dados.valor || 0).toFixed(2).replace(".", ",") +
+            "\n\n" +
+            "O plano foi ativado por 30 dias."
+        );
+
+        await carregarUsuarios();
+
+    } catch (erro) {
+
+        console.error(
+            "NEXUS ADMIN PAGAMENTO:",
+            erro
+        );
+
+        alert(
+            "❌ " +
+            (erro.message ||
+            "Não foi possível confirmar o pagamento.")
+        );
+
+        await carregarUsuarios();
+    }
+}
 
 async function alterarPlano(uid, planoAtual, planoAnterior) {
     if (planoAtual === planoAnterior) {
