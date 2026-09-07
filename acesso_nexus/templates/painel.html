@@ -231,6 +231,39 @@
             {% endif %}
     </div>
 
+    <div class="card" id="NEXUS_PLANOS_PIX">
+        <h2>💳 Escolha seu plano</h2>
+
+        <p style="color:#94a3b8;">
+            Escolha o plano que deseja contratar.
+        </p>
+
+        <div style="display:grid;gap:12px;margin-top:18px;">
+
+            <button
+                type="button"
+                onclick="contratarPlano('basico', 'Básico', '25,00')"
+                style="padding:16px;border:0;border-radius:12px;cursor:pointer;font-weight:700;font-size:16px;">
+                ⭐ Básico — R$ 25,00
+            </button>
+
+            <button
+                type="button"
+                onclick="contratarPlano('pro', 'Pro', '50,00')"
+                style="padding:16px;border:0;border-radius:12px;cursor:pointer;font-weight:700;font-size:16px;">
+                🚀 Pro — R$ 50,00
+            </button>
+
+            <button
+                type="button"
+                onclick="contratarPlano('premium', 'Premium', '75,00')"
+                style="padding:16px;border:0;border-radius:12px;cursor:pointer;font-weight:700;font-size:16px;">
+                👑 Premium — R$ 75,00
+            </button>
+
+        </div>
+    </div>
+
     <div class="card">
         <a href="/api/studio/abrir">
             🚀 Abrir NEXUS HTML STUDIO
@@ -244,6 +277,86 @@
     </div>
 
 </div>
+
+
+<script>
+async function contratarPlano(plano, nomePlano, valor) {
+
+    const confirmar = confirm(
+        "💳 PAGAMENTO VIA PIX\n\n" +
+        "Plano: " + nomePlano + "\n" +
+        "Valor: R$ " + valor + "\n\n" +
+        "Chave Pix:\n" +
+        "55981011208\n\n" +
+        "Ao aceitar, seu plano será ativado imediatamente.\n\n" +
+        "Depois realize o pagamento e envie o comprovante pelo WhatsApp.\n\n" +
+        "⚠️ O pagamento deverá ser confirmado em até 24 horas. " +
+        "Caso não seja confirmado, o administrador poderá suspender o plano.\n\n" +
+        "Deseja aceitar e ativar o plano?"
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+
+        const resposta = await fetch("/api/plano/contratar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                plano: plano
+            })
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.ok) {
+            alert(
+                "❌ Não foi possível contratar o plano.\n\n" +
+                (dados.erro || "Erro desconhecido.")
+            );
+            return;
+        }
+
+        const mensagem =
+            "Olá! Acabei de contratar o plano " +
+            nomePlano +
+            " do NEXUS.\n\n" +
+            "Valor: R$ " +
+            valor +
+            ".\n\n" +
+            "Estou enviando o comprovante do pagamento Pix.";
+
+        const whatsapp =
+            "https://wa.me/55981011208?text=" +
+            encodeURIComponent(mensagem);
+
+        const enviar = confirm(
+            "✅ Plano " + nomePlano + " ativado!\n\n" +
+            "Valor: R$ " + valor + "\n\n" +
+            "Chave Pix: 55981011208\n\n" +
+            "Agora faça o pagamento via Pix e envie o comprovante pelo WhatsApp.\n\n" +
+            "Deseja abrir o WhatsApp agora?"
+        );
+
+        if (enviar) {
+            window.open(whatsapp, "_blank");
+        }
+
+        window.location.reload();
+
+    } catch (erro) {
+
+        alert(
+            "❌ Erro de comunicação com o servidor.\n\n" +
+            erro.message
+        );
+    }
+}
+</script>
 
 </body>
 </html>
