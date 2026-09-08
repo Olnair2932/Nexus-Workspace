@@ -5,6 +5,9 @@
     const preco = $("produtoPreco");
     const descricao = $("produtoDescricao");
     const imagem = $("produtoImagem");
+    const produtoVideo = $("produtoVideo");
+    const produtoPreviewVideo = $("produtoPreviewVideo");
+    const produtoPreviewVideoPlayer = $("produtoPreviewVideoPlayer");
     const previewImagem = $("previewImagem");
     const previewTexto = $("previewTexto");
     const produtoPreviewImagem = $("produtoPreviewImagem");
@@ -18,10 +21,31 @@
 
     const produtoExemplo = { nome: "Produto Exemplo Nexus", preco: "R$ 99,90", descricao: "Este é um produto de exemplo criado para testar o NEXUS HTML STUDIO." };
 
+    function atualizarPreviewVideo() {
+        if (!produtoVideo || !produtoPreviewVideo || !produtoPreviewVideoPlayer) {
+            return;
+        }
+
+        const url = produtoVideo.value.trim();
+
+        if (!url || !/^https:\/\/res\.cloudinary\.com\//i.test(url)) {
+            produtoPreviewVideo.style.display = "none";
+            produtoPreviewVideoPlayer.removeAttribute("src");
+            produtoPreviewVideoPlayer.load();
+            return;
+        }
+
+        produtoPreviewVideo.style.display = "block";
+        produtoPreviewVideoPlayer.src = url;
+        produtoPreviewVideoPlayer.load();
+    }
+
     function atualizarPreview() {
         produtoPreviewNome.textContent = nome.value.trim() || produtoExemplo.nome;
         produtoPreviewPreco.textContent = preco.value.trim() || produtoExemplo.preco;
         produtoPreviewDescricao.textContent = descricao.value.trim() || produtoExemplo.descricao;
+
+        atualizarPreviewVideo();
     }
 
     imagem.addEventListener("change", function () {
@@ -42,7 +66,17 @@
     preco.addEventListener("input", atualizarPreview);
     descricao.addEventListener("input", atualizarPreview);
 
+    if (produtoVideo) {
+        produtoVideo.addEventListener("input", atualizarPreviewVideo);
+    }
+
     btnLimpar.addEventListener("click", function () {
+        if (produtoVideo) produtoVideo.value = "";
+        if (produtoPreviewVideo && produtoPreviewVideoPlayer) {
+            produtoPreviewVideo.style.display = "none";
+            produtoPreviewVideoPlayer.removeAttribute("src");
+            produtoPreviewVideoPlayer.load();
+        }
         nome.value = ""; preco.value = ""; descricao.value = ""; imagem.value = "";
         previewImagem.src = ""; previewImagem.style.display = "none"; previewTexto.style.display = "block";
         produtoPreviewImagem.src = ""; produtoPreviewImagem.style.display = "none"; produtoPreviewPlaceholder.style.display = "flex";
@@ -53,6 +87,13 @@
         const nomeAtual = nome.value.trim();
         const precoAtual = preco.value.trim();
         const descricaoAtual = descricao.value.trim();
+        const videoAtual = produtoVideo ? produtoVideo.value.trim() : "";
+
+        if (videoAtual && !/^https:\/\/res\.cloudinary\.com\//i.test(videoAtual)) {
+            alert("Informe uma URL HTTPS válida de vídeo Cloudinary.");
+            if (produtoVideo) produtoVideo.focus();
+            return;
+        }
         if (!nomeAtual) { alert("Digite o nome do produto."); nome.focus(); return; }
         if (!precoAtual) { alert("Digite o preço do produto."); preco.focus(); return; }
         if (!descricaoAtual) { alert("Digite a descrição do produto."); descricao.focus(); return; }
@@ -73,7 +114,13 @@
             btnGerar.textContent = "🤖 GEMINI 3.1 LITE GERANDO...";
             const resposta = await fetch("/api/html/gerar", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nome: nomeAtual, preco: precoAtual, descricao: descricaoAtual, imagem: imagemUrl })
+                body: JSON.stringify({
+                    nome: nomeAtual,
+                    preco: precoAtual,
+                    descricao: descricaoAtual,
+                    imagem: imagemUrl,
+                    video_url: videoAtual
+                })
             });
             const dados = await resposta.json();
             if (!resposta.ok ||!dados.ok) throw new Error(dados.erro || "Gemini não conseguiu gerar o HTML.");
@@ -142,6 +189,13 @@ async function carregarModoEdicao() {
         const campoNome = document.getElementById("produtoNome"); if (campoNome) campoNome.value = pagina.titulo || "";
         const campoPreco = document.getElementById("produtoPreco"); if (campoPreco) campoPreco.value = pagina.preco || "";
         const campoDescricao = document.getElementById("produtoDescricao"); if (campoDescricao) campoDescricao.value = pagina.descricao || "";
+
+        const campoVideo = document.getElementById("produtoVideo");
+        if (campoVideo) {
+            campoVideo.value = pagina.video_url || "";
+        }
+
+        atualizarPreview();
         const btnSalvar = document.getElementById("btnSalvar"); if (btnSalvar) { btnSalvar.style.display = "inline-flex"; btnSalvar.onclick = salvarHTML; }
         console.log("NEXUS: modo edição carregado", pagina);
     } catch (erro) { console.error("NEXUS: erro ao carregar edição", erro); }
@@ -162,7 +216,16 @@ async function salvarHTML() {
     const preco = document.getElementById("produtoPreco")?.value.trim() || "";
     const descricao = document.getElementById("produtoDescricao")?.value.trim() || "";
     const campoImagem = document.getElementById("produtoImagem");
+    const campoVideo = document.getElementById("produtoVideo");
     const botao = document.getElementById("btnSalvar");
+
+    let video_url = campoVideo?.value.trim() || "";
+
+    if (video_url && !/^https:\/\/res\.cloudinary\.com\//i.test(video_url)) {
+        alert("Informe uma URL HTTPS válida de vídeo Cloudinary.");
+        if (campoVideo) campoVideo.focus();
+        return;
+    }
 
     if (!titulo) {
         alert("Informe o nome do produto.");
@@ -206,6 +269,10 @@ async function salvarHTML() {
 
         if (dadosAtuais.pagina) {
             imagem = dadosAtuais.pagina.imagem || "";
+
+            if (!video_url) {
+                video_url = dadosAtuais.pagina.video_url || "";
+            }
         }
 
         // ----------------------------------------------------
@@ -387,7 +454,8 @@ async function salvarHTML() {
                 titulo,
                 preco,
                 descricao,
-                imagem
+                imagem,
+                video_url
             })
         });
 

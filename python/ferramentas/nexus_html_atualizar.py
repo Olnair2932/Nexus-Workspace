@@ -80,6 +80,14 @@ def main():
     preco = str(dados.get("preco", ""))
     descricao = str(dados.get("descricao", ""))
     imagem = str(dados.get("imagem", ""))
+    video_url = str(dados.get("video_url", "")).strip()
+
+    if video_url and not re.match(
+        r"^https://res\.cloudinary\.com/",
+        video_url,
+        re.IGNORECASE
+    ):
+        erro("A URL do vídeo precisa ser uma URL HTTPS válida do Cloudinary.")
 
     if not arquivo:
         erro("Arquivo HTML não informado.")
@@ -191,6 +199,61 @@ def main():
     else:
         qtd_imagem = 0
 
+    # VÍDEO CLOUDINARY
+    # O marcador permite atualizar/remover o vídeo criado pelo Studio
+    # sem duplicar o bloco a cada edição.
+    marcador_inicio = "<!-- NEXUS_VIDEO_PRODUTO -->"
+    marcador_fim = "<!-- FIM_NEXUS_VIDEO_PRODUTO -->"
+
+    padrao_bloco_video = re.compile(
+        re.escape(marcador_inicio) +
+        r"[\\s\\S]*?" +
+        re.escape(marcador_fim),
+        re.IGNORECASE
+    )
+
+    if video_url:
+        video_seguro = escapar_html(video_url)
+
+        bloco_video = f"""<!-- NEXUS_VIDEO_PRODUTO -->
+<section class="nexus-video-produto" style="width:100%;margin:24px 0;">
+    <div style="width:100%;max-width:900px;margin:0 auto;">
+        <video
+            controls
+            playsinline
+            preload="metadata"
+            style="display:block;width:100%;height:auto;border-radius:16px;"
+            src="{video_seguro}"
+        ></video>
+    </div>
+</section>
+<!-- FIM_NEXUS_VIDEO_PRODUTO -->"""
+
+        if padrao_bloco_video.search(html):
+            html = padrao_bloco_video.sub(bloco_video, html, count=1)
+        else:
+            fechamento_body = re.search(
+                r"</body>",
+                html,
+                flags=re.IGNORECASE
+            )
+
+            if fechamento_body:
+                html = (
+                    html[:fechamento_body.start()]
+                    + "\n"
+                    + bloco_video
+                    + "\n"
+                    + html[fechamento_body.start():]
+                )
+            else:
+                html += "\n" + bloco_video + "\n"
+
+    else:
+        # Se o usuário limpou o campo de vídeo, remove
+        # somente o bloco criado pelo NEXUS HTML STUDIO.
+        html = padrao_bloco_video.sub("", html, count=1)
+
     # SALVA HTML
     try:
         html_file.write_text(
@@ -228,6 +291,8 @@ def main():
 
             if imagem:
                 pagina["imagem"] = imagem
+
+            pagina["video_url"] = video_url
 
             encontrada = True
             break

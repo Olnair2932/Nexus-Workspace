@@ -24,6 +24,7 @@
                 <div class="field full"><label for="produtoNome">🛍️ Nome do produto</label><input id="produtoNome" type="text" placeholder="Ex.: Perfume Masculino"></div>
                 <div class="field"><label for="produtoPreco">💰 Preço</label><input id="produtoPreco" type="text" placeholder="Ex.: R$ 99,90"></div>
                 <div class="field"><label for="produtoImagem">🖼️ Imagem do produto</label><input id="produtoImagem" type="file" accept="image/*"></div>
+                <div class="field full"><label for="produtoVideo">🎬 Vídeo do produto — Cloudinary</label><input id="produtoVideo" type="url" placeholder="Cole aqui a URL HTTPS do vídeo Cloudinary" autocomplete="off"><small>Opcional. Use uma URL de entrega de vídeo do Cloudinary.</small></div>
                 <div class="field full"><label for="produtoDescricao">📝 Descrição</label><textarea id="produtoDescricao" rows="6" placeholder="Digite uma descrição do produto..."></textarea></div>
             </div>
             <div class="image-preview">
@@ -44,6 +45,10 @@
             </div>
             <div class="product-preview">
                 <div class="product-image-area"><img id="produtoPreviewImagem" src="" alt="Produto"><div id="produtoPreviewPlaceholder">🖼️<span>Imagem do produto</span></div></div>
+                <div id="produtoPreviewVideo" class="product-video-area" style="display:none;">
+                    <div class="product-video-title">🎬 Vídeo do produto</div>
+                    <video id="produtoPreviewVideoPlayer" controls playsinline preload="metadata"></video>
+                </div>
                 <div class="product-info">
                     <h3 id="produtoPreviewNome">Produto Exemplo</h3>
                     <div id="produtoPreviewPreco" class="product-price">R$ 99,90</div>

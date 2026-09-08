@@ -502,7 +502,15 @@ app.post("/api/html/upload", uploadImagem.single("imagem"), async (req, res) => 
             });
         }
 
-        const tokenStudio = obterTokenStudio(req);
+        if (video_url) {
+        solicitacao += `
+O vídeo real do produto está disponível nesta URL Cloudinary:
+${video_url}
+Use exatamente essa URL como fonte de um elemento <video controls playsinline preload="metadata"> dentro de uma área de vídeo responsiva.
+`;
+    }
+
+    const tokenStudio = obterTokenStudio(req);
 
         try {
             await registrarUsoStudio("uploads", tokenStudio);
@@ -567,28 +575,116 @@ app.get("/", (req, res) => {
 
 app.get("/api/html/editar", async (req, res) => {
     const arquivoHTML = String(req.query.arquivo || "").trim();
-    if (!arquivoHTML) return res.status(400).json({ ok: false, erro: "Arquivo não informado." });
+
+    if (!arquivoHTML) {
+        return res.status(400).json({
+            ok: false,
+            erro: "Arquivo não informado."
+        });
+    }
+
     const nomeSeguro = path.basename(arquivoHTML);
     const indexFile = path.join(GERADOS_DIR, "index.json");
-    if (!fs.existsSync(indexFile)) return res.status(404).json({ ok: false, erro: "Índice HTML não encontrado." });
-    try {
-        const dados = JSON.parse(fs.readFileSync(indexFile, "utf-8"));
-        const pagina = (dados.paginas || []).find(item => item.arquivo === nomeSeguro);
-        if (!pagina) return res.status(404).json({ ok: false, erro: "Página não encontrada." });
-        const ferramentaDados = path.join(PYTHON_DIR, "ferramentas", "nexus_html_dados.py");
-        if (!fs.existsSync(ferramentaDados)) {
-            return res.json({ ok: true, acao: "editar", pagina: { ...pagina, preco: pagina.preco || "", descricao: pagina.descricao || "" } });
-        }
-        const resultado = await new Promise((resolve) => {
-            execFile("python3", [ferramentaDados, nomeSeguro], { cwd: WORKSPACE, env: process.env, timeout: 120000, maxBuffer: 5 * 1024 * 1024 }, (erro, stdout, stderr) => {
-                resolve({ ok: !erro, stdout: stdout || "", stderr: stderr || "", erro: erro ? erro.message : "" });
-            });
+
+    if (!fs.existsSync(indexFile)) {
+        return res.status(404).json({
+            ok: false,
+            erro: "Índice HTML não encontrado."
         });
+    }
+
+    try {
+        const dados = JSON.parse(
+            fs.readFileSync(indexFile, "utf-8")
+        );
+
+        const pagina = (dados.paginas || []).find(
+            item => item.arquivo === nomeSeguro
+        );
+
+        if (!pagina) {
+            return res.status(404).json({
+                ok: false,
+                erro: "Página não encontrada."
+            });
+        }
+
+        const ferramentaDados = path.join(
+            PYTHON_DIR,
+            "ferramentas",
+            "nexus_html_dados.py"
+        );
+
+        /*
+         * O video_url fica salvo no index.json.
+         * Portanto, mesmo que a ferramenta Python antiga
+         * não conheça vídeo, o Studio continuará recebendo
+         * o endereço Cloudinary salvo anteriormente.
+         */
+
+        if (!fs.existsSync(ferramentaDados)) {
+            return res.json({
+                ok: true,
+                acao: "editar",
+                pagina: {
+                    ...pagina,
+                    preco: pagina.preco || "",
+                    descricao: pagina.descricao || "",
+                    imagem: pagina.imagem || "",
+                    video_url: pagina.video_url || ""
+                }
+            });
+        }
+
+        const resultado = await new Promise((resolve) => {
+            execFile(
+                "python3",
+                [ferramentaDados, nomeSeguro],
+                {
+                    cwd: WORKSPACE,
+                    env: process.env,
+                    timeout: 120000,
+                    maxBuffer: 5 * 1024 * 1024
+                },
+                (erro, stdout, stderr) => {
+                    resolve({
+                        ok: !erro,
+                        stdout: stdout || "",
+                        stderr: stderr || "",
+                        erro: erro ? erro.message : ""
+                    });
+                }
+            );
+        });
+
         let dadosHTML = {};
-        try { dadosHTML = JSON.parse(resultado.stdout.trim()); } catch { dadosHTML = {}; }
-        res.json({ ok: true, acao: "editar", pagina: { ...pagina, preco: dadosHTML.preco || pagina.preco || "", descricao: dadosHTML.descricao || pagina.descricao || "" } });
+
+        try {
+            dadosHTML = JSON.parse(
+                resultado.stdout.trim()
+            );
+        } catch {
+            dadosHTML = {};
+        }
+
+        res.json({
+            ok: true,
+            acao: "editar",
+            pagina: {
+                ...pagina,
+                preco: dadosHTML.preco || pagina.preco || "",
+                descricao: dadosHTML.descricao || pagina.descricao || "",
+                imagem: pagina.imagem || "",
+                video_url: pagina.video_url || ""
+            }
+        });
+
     } catch (erro) {
-        res.status(500).json({ ok: false, erro: "Erro ao carregar página.", detalhe: erro.message });
+        res.status(500).json({
+            ok: false,
+            erro: "Erro ao carregar página.",
+            detalhe: erro.message
+        });
     }
 });
 
@@ -702,6 +798,15 @@ app.post("/api/html/atualizar", async (req, res) => {
     const preco = String(req.body?.preco || "").trim();
     const descricao = String(req.body?.descricao || "").trim();
     const imagem = String(req.body?.imagem || "").trim();
+    const video_url = String(req.body?.video_url || "").trim();
+
+    if (video_url && !/^https:\/\/res\.cloudinary\.com\//i.test(video_url)) {
+        return res.status(400).json({
+            ok: false,
+            erro: "Informe uma URL HTTPS válida de vídeo Cloudinary."
+        });
+    }
+
     if (!arquivoHTML) return res.status(400).json({ ok: false, erro: "Arquivo não informado." });
     const nomeSeguro = path.basename(arquivoHTML);
     const ferramentaDados = path.join(PYTHON_DIR, "ferramentas", "nexus_html_atualizar.py");
@@ -709,7 +814,14 @@ app.post("/api/html/atualizar", async (req, res) => {
         const indexFile = path.join(GERADOS_DIR, "index.json");
         if (fs.existsSync(indexFile)) {
             let indice = JSON.parse(fs.readFileSync(indexFile, "utf-8"));
-            indice.paginas = (indice.paginas || []).map(p => p.arquivo === nomeSeguro ? { ...p, titulo, preco, descricao, imagem } : p);
+            indice.paginas = (indice.paginas || []).map(p => p.arquivo === nomeSeguro ? {
+                ...p,
+                titulo,
+                preco,
+                descricao,
+                imagem,
+                video_url
+            } : p);
             fs.writeFileSync(indexFile, JSON.stringify(indice, null, 2));
         }
         return res.json({ ok: true });
@@ -720,7 +832,8 @@ app.post("/api/html/atualizar", async (req, res) => {
             titulo,
             preco,
             descricao,
-            imagem
+            imagem,
+            video_url
         });
 
         const processo = execFile(
@@ -780,6 +893,15 @@ app.post("/api/html/gerar", async (req, res) => {
     const preco = String(req.body?.preco || "").trim();
     const descricao = String(req.body?.descricao || "").trim();
     const imagem = String(req.body?.imagem || "").trim();
+    const video_url = String(req.body?.video_url || "").trim();
+
+    if (video_url && !/^https:\/\/res\.cloudinary\.com\//i.test(video_url)) {
+        return res.status(400).json({
+            ok: false,
+            erro: "Informe uma URL HTTPS válida de vídeo Cloudinary."
+        });
+    }
+
     if (!nome) return res.status(400).json({ ok: false, erro: "Nome do produto não informado." });
     if (!preco) return res.status(400).json({ ok: false, erro: "Preço não informado." });
     if (!descricao) return res.status(400).json({ ok: false, erro: "Descrição não informada." });
@@ -839,7 +961,15 @@ app.post("/api/html/gerar", async (req, res) => {
     }
     if (!Array.isArray(indice.paginas)) indice.paginas = [];
     indice.paginas = indice.paginas.filter(p => p.arquivo !== nomeArquivo);
-    indice.paginas.unshift({ arquivo: nomeArquivo, titulo: nome, preco, descricao, imagem, criado_em: new Date().toISOString() });
+    indice.paginas.unshift({
+        arquivo: nomeArquivo,
+        titulo: nome,
+        preco,
+        descricao,
+        imagem,
+        video_url,
+        criado_em: new Date().toISOString()
+    });
     fs.writeFileSync(indexFile, JSON.stringify(indice, null, 2), "utf-8");
     // ========================================================
     // SINCRONIZAÇÃO AUTOMÁTICA COM FIREBASE

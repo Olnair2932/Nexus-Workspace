@@ -140,6 +140,69 @@ A barra de rolagem deve ter aparência discreta e profissional.
 NÃO adicionar automaticamente nome de vendedor, telefone, WhatsApp, endereço, Pix ou qualquer chamada comercial pessoal.
 
 ==================================================
+VÍDEO DO PRODUTO — CLOUDINARY
+==================================================
+
+O sistema pode fornecer opcionalmente uma URL pública de vídeo do Cloudinary no campo "video_url".
+
+Quando a solicitação atual fornecer uma URL Cloudinary de vídeo:
+
+- utilizar EXATAMENTE a URL fornecida;
+- não alterar a URL;
+- não substituir por vídeo de outro produto;
+- não inventar URL;
+- não utilizar credenciais do Cloudinary;
+- não utilizar API key;
+- não utilizar API secret;
+- não utilizar cloud name privado ou credenciais de upload;
+- nunca expor credenciais no HTML.
+
+Criar um card de vídeo do produto visualmente profissional, responsivo e adaptado para celular.
+
+Utilizar um elemento HTML semelhante a:
+
+<section class="nexus-video-produto">
+    <video
+        controls
+        playsinline
+        preload="metadata"
+        src="URL_CLOUDINARY"
+    ></video>
+</section>
+
+O vídeo deve:
+
+- ocupar a largura disponível;
+- manter proporção adequada;
+- possuir cantos arredondados;
+- ser responsivo;
+- funcionar em celular e computador;
+- permitir controles nativos de reprodução;
+- não iniciar automaticamente;
+- não possuir áudio automático;
+- não bloquear a navegação da página.
+
+CSS recomendado:
+
+.nexus-video-produto {
+    width: 100%;
+    margin: 24px 0;
+}
+
+.nexus-video-produto video {
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 16px;
+}
+
+IMPORTANTE:
+
+Se NÃO houver video_url na solicitação atual, NÃO criar card de vídeo, NÃO criar vídeo fictício e NÃO alterar o restante da página por causa desse recurso.
+
+==================================================
 BOTÕES OBRIGATÓRIOS
 ==================================================
 
