@@ -909,6 +909,13 @@ app.post("/api/html/gerar", async (req, res) => {
     let solicitacao = `Crie um anúncio HTML profissional para o produto "${nome}".\\nPreço: ${preco}\\nDescrição:\\n${descricao}\\n\\nREQUISITOS OBRIGATÓRIOS:\\n- Criar uma página HTML completa.\\n- Design moderno, profissional e responsivo.\\n- Criar uma área de imagem do produto.\\n- Criar botão "Comprar pelo WhatsApp".\\n- O botão "Comprar pelo WhatsApp" DEVE usar o compartilhamento padrão do WhatsApp, sem número de telefone fixo.\\n- Usar exatamente o formato https://wa.me/?text= seguido da mensagem codificada do produto.\\n- NUNCA inserir número de telefone de vendedor, administrador ou usuário no link do WhatsApp.\\n- NUNCA utilizar dados comerciais pessoais que não tenham sido fornecidos nesta solicitação.\\n- Criar botão "Compartilhar página".\\n- O botão Compartilhar deve usar a API nativa navigator.share quando disponível.\\n- Criar fallback de compartilhamento/cópia do endereço quando navigator.share não estiver disponível.\\n- Não utilizar GEMINI_API_KEY no HTML.\\n- Não colocar nenhuma chave de API no JavaScript do navegador.\\n`;
     if (imagem) solicitacao += `\nA imagem real do produto está disponível nesta URL:\n${imagem}\nUse essa URL como imagem principal do produto no HTML.\n`;
 
+    if (video_url) {
+        solicitacao += `\nO vídeo real do produto está disponível nesta URL Cloudinary:
+${video_url}
+Use exatamente essa URL como fonte de um elemento <video controls playsinline preload="metadata"> dentro de uma área de vídeo responsiva.
+`;
+    }
+
     const tokenStudio = obterTokenStudio(req);
 
     try {
