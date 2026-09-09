@@ -502,14 +502,6 @@ app.post("/api/html/upload", uploadImagem.single("imagem"), async (req, res) => 
             });
         }
 
-        if (video_url) {
-        solicitacao += `
-O vídeo real do produto está disponível nesta URL Cloudinary:
-${video_url}
-Use exatamente essa URL como fonte de um elemento <video controls playsinline preload="metadata"> dentro de uma área de vídeo responsiva.
-`;
-    }
-
     const tokenStudio = obterTokenStudio(req);
 
         try {
