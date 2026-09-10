@@ -15,6 +15,9 @@ dotenv.config({
 
 
 const STUDIO_AUTH_SECRET = process.env.NEXUS_STUDIO_AUTH_SECRET || "";
+const NEXUS_STUDIO_ADMIN_UID = String(
+    process.env.NEXUS_STUDIO_ADMIN_UID || ""
+).trim();
 const ACESSO_URL = "https://nexus-acesso.onrender.com";
 const STUDIO_COOKIE = "nexus_studio_token";
 const STUDIO_TOKEN_MAX_AGE = 600;
@@ -94,6 +97,85 @@ function obterTokenStudio(req) {
     }
 
     return obterCookie(req, STUDIO_COOKIE);
+}
+
+function obterAutenticacaoStudio(req) {
+    const token = obterTokenStudio(req);
+    const payload = validarTokenStudio(token);
+
+    if (!payload || !payload.uid) {
+        return null;
+    }
+
+    return {
+        token,
+        uid: String(payload.uid),
+        admin: Boolean(
+            NEXUS_STUDIO_ADMIN_UID &&
+            String(payload.uid) === NEXUS_STUDIO_ADMIN_UID
+        )
+    };
+}
+
+function paginaPertenceAoUsuario(pagina, autenticacao) {
+    if (!pagina || !autenticacao) return false;
+
+    if (autenticacao.admin) return true;
+
+    return (
+        pagina.uid &&
+        String(pagina.uid) === String(autenticacao.uid)
+    );
+}
+
+function obterPaginaDoUsuario(nomeArquivo, autenticacao) {
+    const indexFile = path.join(GERADOS_DIR, "index.json");
+
+    if (!fs.existsSync(indexFile)) {
+        return {
+            ok: false,
+            status: 404,
+            erro: "Índice HTML não encontrado."
+        };
+    }
+
+    try {
+        const dados = JSON.parse(
+            fs.readFileSync(indexFile, "utf-8")
+        );
+
+        const pagina = (dados.paginas || []).find(
+            item => item.arquivo === nomeArquivo
+        );
+
+        if (!pagina) {
+            return {
+                ok: false,
+                status: 404,
+                erro: "Página não encontrada."
+            };
+        }
+
+        if (!paginaPertenceAoUsuario(pagina, autenticacao)) {
+            return {
+                ok: false,
+                status: 403,
+                erro: "Você não tem permissão para acessar este anúncio."
+            };
+        }
+
+        return {
+            ok: true,
+            pagina
+        };
+    } catch (erro) {
+        return {
+            ok: false,
+            status: 500,
+            erro: "Erro ao ler o índice HTML.",
+            detalhe: erro.message
+        };
+    }
 }
 
 function registrarUsoStudio(tipo, token) {
@@ -566,6 +648,15 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/html/editar", async (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
     const arquivoHTML = String(req.query.arquivo || "").trim();
 
     if (!arquivoHTML) {
@@ -576,6 +667,22 @@ app.get("/api/html/editar", async (req, res) => {
     }
 
     const nomeSeguro = path.basename(arquivoHTML);
+
+    const acessoPagina = obterPaginaDoUsuario(
+        nomeSeguro,
+        autenticacao
+    );
+
+    if (!acessoPagina.ok) {
+        return res.status(acessoPagina.status).json({
+            ok: false,
+            erro: acessoPagina.erro,
+            ...(acessoPagina.detalhe
+                ? { detalhe: acessoPagina.detalhe }
+                : {})
+        });
+    }
+
     const indexFile = path.join(GERADOS_DIR, "index.json");
 
     if (!fs.existsSync(indexFile)) {
@@ -681,25 +788,97 @@ app.get("/api/html/editar", async (req, res) => {
 });
 
 app.get("/api/html/listar", (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
     try {
         const indexFile = path.join(GERADOS_DIR, "index.json");
         if (!fs.existsSync(indexFile)) return res.json({ ok: true, paginas: [] });
         const indice = JSON.parse(fs.readFileSync(indexFile, "utf-8"));
-        res.json({ ok: true, paginas: indice.paginas || [] });
+
+        const paginas = (indice.paginas || []).filter(
+            pagina => paginaPertenceAoUsuario(pagina, autenticacao)
+        );
+
+        res.json({ ok: true, paginas });
     } catch (e) { res.json({ ok: true, paginas: [] }); }
 });
 
 app.get("/api/htmls", (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
     try {
-        const files = fs.readdirSync(GERADOS_DIR).filter(f => f.endsWith(".html")).sort().reverse();
+        const indexFile = path.join(GERADOS_DIR, "index.json");
+        if (!fs.existsSync(indexFile)) {
+            return res.json([]);
+        }
+
+        const indice = JSON.parse(
+            fs.readFileSync(indexFile, "utf-8")
+        );
+
+        const arquivosPermitidos = new Set(
+            (indice.paginas || [])
+                .filter(pagina =>
+                    paginaPertenceAoUsuario(pagina, autenticacao)
+                )
+                .map(pagina => pagina.arquivo)
+        );
+
+        const files = fs.readdirSync(GERADOS_DIR)
+            .filter(f =>
+                f.endsWith(".html") &&
+                arquivosPermitidos.has(f)
+            )
+            .sort()
+            .reverse();
+
         res.json(files);
     } catch { res.json([]); }
 });
 
 app.post("/api/html/excluir", async (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
     const arquivoHTML = String(req.body?.arquivo || "").trim();
     if (!arquivoHTML) return res.status(400).json({ ok: false, erro: "Arquivo não informado." });
     const nomeSeguro = path.basename(arquivoHTML);
+
+    const acessoPagina = obterPaginaDoUsuario(
+        nomeSeguro,
+        autenticacao
+    );
+
+    if (!acessoPagina.ok) {
+        return res.status(acessoPagina.status).json({
+            ok: false,
+            erro: acessoPagina.erro,
+            ...(acessoPagina.detalhe
+                ? { detalhe: acessoPagina.detalhe }
+                : {})
+        });
+    }
+
     const ferramentaExcluir = path.join(PYTHON_DIR, "ferramentas", "nexus_html_excluir.py");
     if (!fs.existsSync(ferramentaExcluir)) {
         try { fs.unlinkSync(path.join(GERADOS_DIR, nomeSeguro)); } catch {}
@@ -785,6 +964,15 @@ app.post("/api/html/excluir", async (req, res) => {
 });
 
 app.post("/api/html/atualizar", async (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
     const arquivoHTML = String(req.body?.arquivo || "").trim();
     const titulo = String(req.body?.titulo || "").trim();
     const preco = String(req.body?.preco || "").trim();
@@ -801,6 +989,22 @@ app.post("/api/html/atualizar", async (req, res) => {
 
     if (!arquivoHTML) return res.status(400).json({ ok: false, erro: "Arquivo não informado." });
     const nomeSeguro = path.basename(arquivoHTML);
+
+    const acessoPagina = obterPaginaDoUsuario(
+        nomeSeguro,
+        autenticacao
+    );
+
+    if (!acessoPagina.ok) {
+        return res.status(acessoPagina.status).json({
+            ok: false,
+            erro: acessoPagina.erro,
+            ...(acessoPagina.detalhe
+                ? { detalhe: acessoPagina.detalhe }
+                : {})
+        });
+    }
+
     const ferramentaDados = path.join(PYTHON_DIR, "ferramentas", "nexus_html_atualizar.py");
     if (!fs.existsSync(ferramentaDados)) {
         const indexFile = path.join(GERADOS_DIR, "index.json");
@@ -908,7 +1112,16 @@ Use exatamente essa URL como fonte de um elemento <video controls playsinline pr
 `;
     }
 
-    const tokenStudio = obterTokenStudio(req);
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
+    const tokenStudio = autenticacao.token;
 
     try {
         await registrarUsoStudio("geracoes", tokenStudio);
@@ -967,6 +1180,7 @@ Use exatamente essa URL como fonte de um elemento <video controls playsinline pr
         descricao,
         imagem,
         video_url,
+        uid: autenticacao.uid,
         criado_em: new Date().toISOString()
     });
     fs.writeFileSync(indexFile, JSON.stringify(indice, null, 2), "utf-8");

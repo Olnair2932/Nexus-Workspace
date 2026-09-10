@@ -560,6 +560,11 @@ def salvar(nome):
             ""
         ),
 
+        "uid": metadata.get(
+            "uid",
+            ""
+        ),
+
         "criado_em": metadata.get(
             "criado_em",
             datetime.now().isoformat()
@@ -861,6 +866,7 @@ def restaurar_todos():
             "preco": registro.get("preco", ""),
             "descricao": registro.get("descricao", ""),
             "imagem": registro.get("imagem", ""),
+            "uid": registro.get("uid", ""),
             "criado_em": registro.get(
                 "criado_em",
                 datetime.now().isoformat()
