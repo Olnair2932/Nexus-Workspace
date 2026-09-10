@@ -333,7 +333,19 @@ async function contratarPlano(plano, nomePlano, valor) {
             })
         });
 
-        const dados = await resposta.json();
+        const textoResposta = await resposta.text();
+        let dados;
+        try {
+            dados = JSON.parse(textoResposta);
+        } catch (erroJson) {
+            alert(
+                "❌ O servidor não retornou JSON.\n\n" +
+                "Status: " + resposta.status + "\n\n" +
+                "Resposta recebida:\n" +
+                textoResposta.substring(0, 1000)
+            );
+            return;
+        }
 
         if (!resposta.ok || !dados.ok) {
             alert(
