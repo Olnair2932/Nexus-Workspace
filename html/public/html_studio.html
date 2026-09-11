@@ -27,6 +27,70 @@
                 <div class="field full"><label for="produtoVideo">🎬 Vídeo do produto — Cloudinary</label><input id="produtoVideo" type="url" placeholder="Cole aqui a URL HTTPS do vídeo Cloudinary" autocomplete="off"><small>Opcional. Use uma URL de entrega de vídeo do Cloudinary.</small></div>
                 <div class="field full"><label for="produtoDescricao">📝 Descrição</label><textarea id="produtoDescricao" rows="6" placeholder="Digite uma descrição do produto..."></textarea></div>
             </div>
+            <div class="ai-media-panel">
+
+                <h3 class="ai-media-title">✨ Imagem com Inteligência Artificial</h3>
+                <p class="ai-media-description">
+                    Descreva a imagem que deseja criar. O NEXUS utilizará o Cloudinary para gerar a imagem.
+                </p>
+
+                <div class="field">
+                    <label for="imagemPrompt">🎨 Descrição da imagem</label>
+                    <textarea
+                        id="imagemPrompt"
+                        rows="4"
+                        placeholder="Ex.: Produto em destaque, fundo profissional, iluminação de estúdio, visual moderno e elegante..."
+                    ></textarea>
+                </div>
+
+                <div class="ai-media-actions">
+                    <button type="button" class="btn-primary" id="btnGerarImagemIA">
+                        ✨ GERAR IMAGEM COM IA
+                    </button>
+                </div>
+
+                <div id="aiImageResult" class="ai-image-result">
+                    <img id="aiImageResultPreview" src="" alt="Imagem gerada pela IA">
+
+                    <div class="ai-image-result-actions">
+                        <button type="button" class="btn-primary" id="btnUsarImagemIA">
+                            🖼️ USAR NO MEU ANÚNCIO
+                        </button>
+                    </div>
+                </div>
+
+                <div class="media-library">
+
+                    <div class="media-library-header">
+                        <h3>🎬 Meus vídeos</h3>
+                        <button type="button" class="btn-secondary" id="btnAtualizarVideos">
+                            🔄 Atualizar
+                        </button>
+                    </div>
+
+                    <div class="field">
+                        <label for="produtoVideoArquivo">📱 Vídeo do aparelho</label>
+                        <input id="produtoVideoArquivo" type="file" accept="video/*">
+                    </div>
+
+                    <div class="ai-media-actions">
+                        <button type="button" class="btn-primary" id="btnEnviarVideo">
+                            ☁️ ENVIAR VÍDEO
+                        </button>
+                    </div>
+
+                    <div id="videoUploadStatus" class="video-upload-status"></div>
+
+                    <div id="listaVideos" class="video-library">
+                        <div class="media-library-empty">
+                            Nenhum vídeo encontrado.
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
             <div class="image-preview">
                 <div class="preview-title">Pré-visualização da imagem</div>
                 <div class="preview-box"><span id="previewTexto">Nenhuma imagem selecionada</span><img id="previewImagem" alt="Pré-visualização"></div>

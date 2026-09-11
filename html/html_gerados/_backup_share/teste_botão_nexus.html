@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Teste Botão Nexus</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #f2f4f7;
+}
+
+.card {
+    max-width: 700px;
+    margin: auto;
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+}
+
+.imagem {
+    width: 100%;
+    display: block;
+    cursor: zoom-in;
+    transition: transform .3s;
+}
+
+.imagem.zoom {
+    transform: scale(2);
+}
+
+.conteudo {
+    padding: 25px;
+}
+
+h1 {
+    font-size: 30px;
+}
+
+.preco {
+    color: #159447;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.descricao {
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.whatsapp {
+    display: block;
+    margin-top: 25px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #25D366;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<img
+    id="imagem"
+    class="imagem"
+    src="/uploads/1788068599533_share_1787303847673.png"
+    alt="Teste Botão Nexus"
+>
+
+<div class="conteudo">
+
+<h1>Teste</h1>
+
+<div class="preco">
+10,00
+</div>
+
+<div class="descricao">
+Produto teste
+</div>
+
+<a
+    class="whatsapp"
+    id="whatsapp"
+    target="_blank"
+    rel="noopener"
+>
+💬 Comprar pelo WhatsApp
+</a>
+
+</div>
+
+</div>
+
+<script>
+
+const numero = "5555981011208";
+
+const mensagem =
+"Olá! Tenho interesse no produto: "
++ document.querySelector("h1").innerText
++ " - "
++ document.querySelector(".preco").innerText;
+
+document.getElementById("whatsapp").href =
+"https://wa.me/"
++ numero
++ "?text="
++ encodeURIComponent(mensagem);
+
+const imagem =
+document.getElementById("imagem");
+
+imagem.addEventListener(
+    "dblclick",
+    function() {
+        this.classList.toggle("zoom");
+    }
+);
+
+let ultimoToque = 0;
+
+imagem.addEventListener(
+    "touchend",
+    function(evento) {
+
+        const agora = Date.now();
+
+        if (agora - ultimoToque < 350) {
+
+            evento.preventDefault();
+
+            this.classList.toggle("zoom");
+        }
+
+        ultimoToque = agora;
+    }
+);
+
+</script>
+
+</body>
+
+</html>

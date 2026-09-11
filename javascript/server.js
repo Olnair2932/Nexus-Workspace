@@ -13,7 +13,414 @@ dotenv.config({
     quiet: true
 });
 
+const CLOUDINARY_URL = String(
+    process.env.CLOUDINARY_URL || ""
+).trim();
 
+function obterCloudinaryConfig() {
+    if (!CLOUDINARY_URL) {
+        return null;
+    }
+
+    try {
+        const url = new URL(CLOUDINARY_URL);
+
+        if (url.protocol !== "cloudinary:") {
+            return null;
+        }
+
+        const apiKey = decodeURIComponent(url.username || "");
+        const apiSecret = decodeURIComponent(url.password || "");
+        const cloudName = String(url.hostname || "").trim();
+
+        if (!apiKey || !apiSecret || !cloudName) {
+            return null;
+        }
+
+        return {
+            apiKey,
+            apiSecret,
+            cloudName
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function excluirVideoCloudinary(publicId) {
+    const config = obterCloudinaryConfig();
+
+    if (!config) {
+        return {
+            ok: false,
+            erro: "CLOUDINARY_URL não está configurada corretamente no servidor."
+        };
+    }
+
+    publicId = String(publicId || "").trim();
+
+    if (!publicId) {
+        return {
+            ok: false,
+            erro: "public_id do vídeo não informado."
+        };
+    }
+
+    try {
+        const timestamp = Math.floor(Date.now() / 1000);
+
+        const assinaturaBase =
+            `public_id=${publicId}&timestamp=${timestamp}${config.apiSecret}`;
+
+        const assinatura = crypto
+            .createHash("sha1")
+            .update(assinaturaBase)
+            .digest("hex");
+
+        const formulario = new URLSearchParams();
+
+        formulario.append(
+            "public_id",
+            publicId
+        );
+
+        formulario.append(
+            "timestamp",
+            String(timestamp)
+        );
+
+        formulario.append(
+            "api_key",
+            config.apiKey
+        );
+
+        formulario.append(
+            "signature",
+            assinatura
+        );
+
+        const resposta = await fetch(
+            `https://api.cloudinary.com/v1_1/${config.cloudName}/video/destroy`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/x-www-form-urlencoded"
+                },
+                body: formulario.toString()
+            }
+        );
+
+        let dados = {};
+
+        try {
+            dados = await resposta.json();
+        } catch (_) {
+            dados = {};
+        }
+
+        if (!resposta.ok) {
+            return {
+                ok: false,
+                status: resposta.status,
+                erro:
+                    dados?.error?.message ||
+                    dados?.message ||
+                    "Cloudinary não conseguiu excluir o vídeo.",
+                resposta: dados
+            };
+        }
+
+        if (
+            dados.result &&
+            dados.result !== "ok" &&
+            dados.result !== "not found"
+        ) {
+            return {
+                ok: false,
+                erro:
+                    "Cloudinary retornou um resultado inesperado ao excluir o vídeo.",
+                resposta: dados
+            };
+        }
+
+        return {
+            ok: true,
+            dados
+        };
+    } catch (erro) {
+        return {
+            ok: false,
+            erro: erro.message
+        };
+    }
+}
+
+async function enviarVideoCloudinary(caminhoArquivo) {
+    const config = obterCloudinaryConfig();
+
+    if (!config) {
+        return {
+            ok: false,
+            erro: "CLOUDINARY_URL não está configurada corretamente no servidor."
+        };
+    }
+
+    if (!caminhoArquivo || !fs.existsSync(caminhoArquivo)) {
+        return {
+            ok: false,
+            erro: "Arquivo de vídeo temporário não encontrado."
+        };
+    }
+
+    try {
+        const arquivo = fs.readFileSync(caminhoArquivo);
+
+        const timestamp = Math.floor(Date.now() / 1000);
+
+        const crypto = require("crypto");
+
+        const assinaturaBase =
+            `timestamp=${timestamp}${config.apiSecret}`;
+
+        const assinatura = crypto
+            .createHash("sha1")
+            .update(assinaturaBase)
+            .digest("hex");
+
+        const formulario = new FormData();
+
+        formulario.append(
+            "file",
+            new Blob([arquivo]),
+            path.basename(caminhoArquivo)
+        );
+
+        formulario.append(
+            "api_key",
+            config.apiKey
+        );
+
+        formulario.append(
+            "timestamp",
+            String(timestamp)
+        );
+
+        formulario.append(
+            "signature",
+            assinatura
+        );
+
+        const resposta = await fetch(
+            `https://api.cloudinary.com/v1_1/${config.cloudName}/video/upload`,
+            {
+                method: "POST",
+                body: formulario
+            }
+        );
+
+        let dados = {};
+
+        try {
+            dados = await resposta.json();
+        } catch (_) {
+            dados = {};
+        }
+
+        if (!resposta.ok) {
+            return {
+                ok: false,
+                status: resposta.status,
+                erro:
+                    dados?.error?.message ||
+                    dados?.message ||
+                    "Cloudinary não conseguiu enviar o vídeo.",
+                resposta: dados
+            };
+        }
+
+        return {
+            ok: true,
+            dados
+        };
+    } catch (erro) {
+        return {
+            ok: false,
+            erro: erro.message
+        };
+    }
+}
+
+async function gerarImagemCloudinary(prompt) {
+    const config = obterCloudinaryConfig();
+
+    if (!config) {
+        return {
+            ok: false,
+            erro: "CLOUDINARY_URL não está configurada corretamente no servidor."
+        };
+    }
+
+    const resposta = await fetch(
+        `https://api.cloudinary.com/v2/generate/${config.cloudName}/text_to_image`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization":
+                    "Basic " +
+                    Buffer.from(
+                        `${config.apiKey}:${config.apiSecret}`
+                    ).toString("base64")
+            },
+            body: JSON.stringify({
+                model: {
+                    id: "nano-banana-2"
+                },
+                prompt: String(prompt || "").trim(),
+                image_size: {
+                    aspect_ratio: "4:3",
+                    resolution: "1K"
+                },
+                target: {
+                    target_type: "managed_asset"
+                }
+            })
+        }
+    );
+
+    let dados = {};
+
+    try {
+        dados = await resposta.json();
+    } catch (_) {
+        dados = {};
+    }
+
+    if (!resposta.ok) {
+        return {
+            ok: false,
+            status: resposta.status,
+            erro:
+                dados?.error?.message ||
+                dados?.message ||
+                "Cloudinary não conseguiu gerar a imagem.",
+            resposta: dados
+        };
+    }
+
+    return {
+        ok: true,
+        dados
+    };
+}
+
+/**
+ * Materializa uma imagem gerada pelo Cloudinary em /html/uploads/.
+ * Isso permite que o fluxo existente de incorporação em Base64 seja preservado.
+ */
+async function materializarImagemCloudinary(urlImagem) {
+    const config = obterCloudinaryConfig();
+
+    if (!config) {
+        return {
+            ok: false,
+            erro: "CLOUDINARY_URL não está configurada corretamente no servidor."
+        };
+    }
+
+    let url;
+
+    try {
+        url = new URL(String(urlImagem || "").trim());
+    } catch (_) {
+        return {
+            ok: false,
+            erro: "URL da imagem inválida."
+        };
+    }
+
+    if (url.protocol !== "https:") {
+        return {
+            ok: false,
+            erro: "A imagem precisa utilizar uma URL HTTPS."
+        };
+    }
+
+    if (url.hostname !== `res.cloudinary.com`) {
+        return {
+            ok: false,
+            erro: "A imagem informada não pertence ao Cloudinary."
+        };
+    }
+
+    try {
+        const resposta = await fetch(url.toString());
+
+        if (!resposta.ok) {
+            return {
+                ok: false,
+                erro: `Cloudinary retornou HTTP ${resposta.status}.`
+            };
+        }
+
+        const contentType = String(
+            resposta.headers.get("content-type") || ""
+        ).toLowerCase();
+
+        if (!contentType.startsWith("image/")) {
+            return {
+                ok: false,
+                erro: "O arquivo retornado pelo Cloudinary não é uma imagem."
+            };
+        }
+
+        const dados = Buffer.from(await resposta.arrayBuffer());
+
+        if (dados.length > 15 * 1024 * 1024) {
+            return {
+                ok: false,
+                erro: "A imagem gerada ultrapassa o limite permitido de 15 MB."
+            };
+        }
+
+        const extensoes = {
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+            "image/svg+xml": ".svg"
+        };
+
+        const extensao = extensoes[contentType] || ".png";
+
+        const nomeArquivo =
+            `generated_${Date.now()}_${crypto.randomBytes(6).toString("hex")}${extensao}`;
+
+        const caminhoArquivo = path.join(UPLOADS_DIR, nomeArquivo);
+
+        fs.writeFileSync(caminhoArquivo, dados);
+
+        return {
+            ok: true,
+            url: `/uploads/${nomeArquivo}`,
+            nome: nomeArquivo,
+            contentType,
+            tamanho: dados.length
+        };
+    } catch (erro) {
+        console.error(
+            "[NEXUS IMAGEM] Falha ao materializar imagem Cloudinary:",
+            erro.message
+        );
+
+        return {
+            ok: false,
+            erro: "Não foi possível salvar a imagem gerada.",
+            detalhe: erro.message
+        };
+    }
+}
 const STUDIO_AUTH_SECRET = process.env.NEXUS_STUDIO_AUTH_SECRET || "";
 const NEXUS_STUDIO_ADMIN_UID = String(
     process.env.NEXUS_STUDIO_ADMIN_UID || ""
@@ -176,6 +583,176 @@ function obterPaginaDoUsuario(nomeArquivo, autenticacao) {
             detalhe: erro.message
         };
     }
+}
+
+function executarFirebaseMedia(argumentos = [], timeout = 120000) {
+    return new Promise((resolve) => {
+        execFile(
+            "python3",
+            [FIREBASE_MEDIA_TOOL, ...argumentos],
+            {
+                cwd: WORKSPACE,
+                env: process.env,
+                timeout,
+                maxBuffer: 20 * 1024 * 1024
+            },
+            (erro, stdout, stderr) => {
+                resolve({
+                    ok: !erro,
+                    codigo: erro
+                        ? (typeof erro.code === "number" ? erro.code : 1)
+                        : 0,
+                    stdout: stdout || "",
+                    stderr: stderr || "",
+                    erro: erro ? erro.message : ""
+                });
+            }
+        );
+    });
+}
+
+function analisarRespostaFirebaseMedia(resultado) {
+    const texto = String(resultado.stdout || "").trim();
+
+    if (!texto) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(texto);
+    } catch (_) {
+        return {
+            mensagem: texto
+        };
+    }
+}
+
+async function salvarVideoFirebase(uid, videoId, dados) {
+    if (!uid || !videoId) {
+        return {
+            ok: false,
+            erro: "UID e ID do vídeo são obrigatórios."
+        };
+    }
+
+    if (!fs.existsSync(FIREBASE_MEDIA_TOOL)) {
+        return {
+            ok: false,
+            erro: "Ferramenta nexus_firebase_media.py não encontrada."
+        };
+    }
+
+    const payload = JSON.stringify(dados || {});
+
+    const resultado = await executarFirebaseMedia([
+        "salvar",
+        String(uid),
+        String(videoId),
+        payload
+    ]);
+
+    if (!resultado.ok) {
+        console.error(
+            "[NEXUS FIREBASE MEDIA] Falha ao salvar vídeo:",
+            resultado.stderr || resultado.erro
+        );
+
+        return {
+            ok: false,
+            erro:
+                resultado.stderr ||
+                resultado.erro ||
+                "Falha ao salvar vídeo no Firebase."
+        };
+    }
+
+    return {
+        ok: true,
+        dados: analisarRespostaFirebaseMedia(resultado)
+    };
+}
+
+async function listarVideosFirebase(uid) {
+    if (!uid) {
+        return {
+            ok: false,
+            erro: "UID não informado."
+        };
+    }
+
+    if (!fs.existsSync(FIREBASE_MEDIA_TOOL)) {
+        return {
+            ok: false,
+            erro: "Ferramenta nexus_firebase_media.py não encontrada."
+        };
+    }
+
+    const resultado = await executarFirebaseMedia([
+        "listar",
+        String(uid)
+    ]);
+
+    if (!resultado.ok) {
+        console.error(
+            "[NEXUS FIREBASE MEDIA] Falha ao listar vídeos:",
+            resultado.stderr || resultado.erro
+        );
+
+        return {
+            ok: false,
+            erro:
+                resultado.stderr ||
+                resultado.erro ||
+                "Falha ao listar vídeos no Firebase."
+        };
+    }
+
+    return {
+        ok: true,
+        dados: analisarRespostaFirebaseMedia(resultado)
+    };
+}
+
+async function excluirVideoFirebase(uid, videoId) {
+    if (!uid || !videoId) {
+        return {
+            ok: false,
+            erro: "UID e ID do vídeo são obrigatórios."
+        };
+    }
+
+    if (!fs.existsSync(FIREBASE_MEDIA_TOOL)) {
+        return {
+            ok: false,
+            erro: "Ferramenta nexus_firebase_media.py não encontrada."
+        };
+    }
+
+    const resultado = await executarFirebaseMedia([
+        "excluir",
+        String(uid),
+        String(videoId)
+    ]);
+
+    if (!resultado.ok) {
+        console.error(
+            "[NEXUS FIREBASE MEDIA] Falha ao excluir vídeo:",
+            resultado.stderr || resultado.erro
+        );
+
+        return {
+            ok: false,
+            erro:
+                resultado.stderr ||
+                resultado.erro ||
+                "Falha ao excluir vídeo do Firebase."
+        };
+    }
+
+    return {
+        ok: true,
+        dados: analisarRespostaFirebaseMedia(resultado)
+    };
 }
 
 function registrarUsoStudio(tipo, token) {
@@ -354,6 +931,12 @@ const FIREBASE_SYNC_TOOL = path.join(
   PYTHON_DIR,
   "ferramentas",
   "nexus_firebase_sync.py"
+);
+
+const FIREBASE_MEDIA_TOOL = path.join(
+  PYTHON_DIR,
+  "ferramentas",
+  "nexus_firebase_media.py"
 );
 
 
@@ -556,6 +1139,133 @@ function executarPython(comando) {
     });
 }
 
+// GERAR IMAGEM COM CLOUDINARY
+app.post("/api/imagem/gerar", async (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
+    const prompt = String(req.body?.prompt || "").trim();
+
+    if (!prompt) {
+        return res.status(400).json({
+            ok: false,
+            erro: "Descreva a imagem que deseja gerar."
+        });
+    }
+
+    if (prompt.length > 4000) {
+        return res.status(400).json({
+            ok: false,
+            erro: "O prompt da imagem não pode ultrapassar 4000 caracteres."
+        });
+    }
+
+    try {
+        await registrarUsoStudio(
+            "geracoes",
+            autenticacao.token
+        );
+    } catch (erroUso) {
+        if (erroUso.codigo === "LIMITE_ATINGIDO") {
+            return res.status(403).json({
+                ok: false,
+                erro: erroUso.message,
+                limite_atingido: true,
+                tipo: "geracoes"
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Não foi possível registrar o uso da geração.",
+            detalhe: erroUso.message
+        });
+    }
+
+    try {
+        const resultado = await gerarImagemCloudinary(prompt);
+
+        if (!resultado.ok) {
+            return res.status(resultado.status || 502).json({
+                ok: false,
+                erro: resultado.erro,
+                resposta: resultado.resposta || {}
+            });
+        }
+
+        return res.json({
+            ok: true,
+            uid: autenticacao.uid,
+            imagem: resultado.dados
+        });
+    } catch (erro) {
+        console.error(
+            "[NEXUS CLOUDINARY] Falha ao gerar imagem:",
+            erro.message
+        );
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Erro ao gerar imagem com Cloudinary.",
+            detalhe: erro.message
+        });
+    }
+});
+
+// MATERIALIZAR IMAGEM GERADA PELA IA
+app.post("/api/imagem/materializar", async (req, res) => {
+    const autenticacao = obterAutenticacaoStudio(req);
+
+    if (!autenticacao) {
+        return res.status(401).json({
+            ok: false,
+            erro: "Autorização do Studio inválida ou expirada."
+        });
+    }
+
+    const urlImagem = String(req.body?.url || "").trim();
+
+    if (!urlImagem) {
+        return res.status(400).json({
+            ok: false,
+            erro: "URL da imagem não informada."
+        });
+    }
+
+    try {
+        const resultado = await materializarImagemCloudinary(urlImagem);
+
+        if (!resultado.ok) {
+            return res.status(400).json(resultado);
+        }
+
+        return res.json({
+            ok: true,
+            uid: autenticacao.uid,
+            url: resultado.url,
+            nome: resultado.nome,
+            contentType: resultado.contentType,
+            tamanho: resultado.tamanho
+        });
+    } catch (erro) {
+        console.error(
+            "[NEXUS IMAGEM] Erro ao materializar imagem:",
+            erro.message
+        );
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Erro ao preparar a imagem gerada pela IA.",
+            detalhe: erro.message
+        });
+    }
+});
 // UPLOAD
 const storageImagem = multer.diskStorage({
     destination: function (req, file, cb) { cb(null, UPLOADS_DIR); },
@@ -572,6 +1282,58 @@ const uploadImagem = multer({
     fileFilter: function (req, file, cb) {
         if (file && file.mimetype && file.mimetype.startsWith("image/")) cb(null, true);
         else cb(new Error("Apenas arquivos de imagem são permitidos."));
+    }
+});
+
+const MIDIA_TEMP_DIR = path.join(WORKSPACE, "html", "uploads", ".tmp_video");
+
+fs.mkdirSync(MIDIA_TEMP_DIR, { recursive: true });
+
+const storageVideoTemporario = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, MIDIA_TEMP_DIR);
+    },
+    filename: function (req, file, cb) {
+        const extensao = path.extname(
+            file.originalname || ""
+        ).toLowerCase();
+
+        const nomeBase = path.basename(
+            file.originalname || "video",
+            extensao
+        )
+            .replace(/[^a-zA-Z0-9_-]/g, "_")
+            .slice(0, 80);
+
+        const nomeFinal =
+            Date.now() +
+            "_" +
+            nomeBase +
+            extensao;
+
+        cb(null, nomeFinal);
+    }
+});
+
+const uploadVideoTemporario = multer({
+    storage: storageVideoTemporario,
+    limits: {
+        fileSize: 100 * 1024 * 1024
+    },
+    fileFilter: function (req, file, cb) {
+        if (
+            file &&
+            file.mimetype &&
+            file.mimetype.startsWith("video/")
+        ) {
+            cb(null, true);
+        } else {
+            cb(
+                new Error(
+                    "Apenas arquivos de vídeo são permitidos."
+                )
+            );
+        }
     }
 });
 
@@ -619,6 +1381,381 @@ app.post("/api/html/upload", uploadImagem.single("imagem"), async (req, res) => 
         return res.status(500).json({
             ok: false,
             erro: "Erro ao processar imagem.",
+            detalhe: erro.message
+        });
+    }
+});
+
+app.post(
+    "/api/video/upload",
+    uploadVideoTemporario.single("video"),
+    async (req, res) => {
+        let caminhoTemporario = "";
+
+        try {
+            const autenticacao = obterAutenticacaoStudio(req);
+
+            if (!autenticacao) {
+                if (req.file?.path && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+
+                return res.status(401).json({
+                    ok: false,
+                    erro: "Autorização do Studio inválida ou expirada."
+                });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({
+                    ok: false,
+                    erro: "Nenhum vídeo foi enviado."
+                });
+            }
+
+            caminhoTemporario = req.file.path;
+
+            try {
+                await registrarUsoStudio(
+                    "uploads",
+                    autenticacao.token
+                );
+            } catch (erroUso) {
+                if (
+                    caminhoTemporario &&
+                    fs.existsSync(caminhoTemporario)
+                ) {
+                    fs.unlinkSync(caminhoTemporario);
+                }
+
+                if (erroUso.codigo === "LIMITE_ATINGIDO") {
+                    return res.status(403).json({
+                        ok: false,
+                        erro: erroUso.message,
+                        limite_atingido: true,
+                        tipo: "uploads"
+                    });
+                }
+
+                throw erroUso;
+            }
+
+            const resultadoCloudinary =
+                await enviarVideoCloudinary(
+                    caminhoTemporario
+                );
+
+            if (!resultadoCloudinary.ok) {
+                if (
+                    caminhoTemporario &&
+                    fs.existsSync(caminhoTemporario)
+                ) {
+                    fs.unlinkSync(caminhoTemporario);
+                }
+
+                return res.status(
+                    resultadoCloudinary.status || 502
+                ).json({
+                    ok: false,
+                    erro: resultadoCloudinary.erro,
+                    resposta:
+                        resultadoCloudinary.resposta || {}
+                });
+            }
+
+            const dadosCloudinary =
+                resultadoCloudinary.dados || {};
+
+            const videoId =
+                Date.now().toString() +
+                "_" +
+                Math.random()
+                    .toString(36)
+                    .slice(2, 10);
+
+            const dadosVideo = {
+                id: videoId,
+                uid: autenticacao.uid,
+                nome:
+                    String(
+                        req.body?.nome ||
+                        req.file.originalname ||
+                        "Vídeo"
+                    ).slice(0, 200),
+                url:
+                    dadosCloudinary.secure_url ||
+                    dadosCloudinary.url ||
+                    "",
+                secure_url:
+                    dadosCloudinary.secure_url || "",
+                public_id:
+                    dadosCloudinary.public_id || "",
+                resource_type:
+                    dadosCloudinary.resource_type ||
+                    "video",
+                format:
+                    dadosCloudinary.format || "",
+                bytes:
+                    Number(dadosCloudinary.bytes || 0),
+                duration:
+                    Number(dadosCloudinary.duration || 0),
+                width:
+                    Number(dadosCloudinary.width || 0),
+                height:
+                    Number(dadosCloudinary.height || 0),
+                criado_em:
+                    new Date().toISOString()
+            };
+
+            if (!dadosVideo.url) {
+                if (
+                    caminhoTemporario &&
+                    fs.existsSync(caminhoTemporario)
+                ) {
+                    fs.unlinkSync(caminhoTemporario);
+                }
+
+                return res.status(502).json({
+                    ok: false,
+                    erro:
+                        "Cloudinary não retornou a URL do vídeo."
+                });
+            }
+
+            const firebase =
+                await salvarVideoFirebase(
+                    autenticacao.uid,
+                    videoId,
+                    dadosVideo
+                );
+
+            if (!firebase.ok) {
+                console.error(
+                    "[NEXUS FIREBASE MEDIA] Vídeo enviado ao Cloudinary, mas não foi salvo no Firebase:",
+                    firebase.erro
+                );
+
+                if (
+                    caminhoTemporario &&
+                    fs.existsSync(caminhoTemporario)
+                ) {
+                    fs.unlinkSync(caminhoTemporario);
+                }
+
+                return res.status(500).json({
+                    ok: false,
+                    erro:
+                        "Vídeo enviado ao Cloudinary, mas não foi possível salvar seus dados no Firebase.",
+                    detalhe: firebase.erro
+                });
+            }
+
+            if (
+                caminhoTemporario &&
+                fs.existsSync(caminhoTemporario)
+            ) {
+                fs.unlinkSync(caminhoTemporario);
+            }
+
+            return res.json({
+                ok: true,
+                uid: autenticacao.uid,
+                video: dadosVideo
+            });
+        } catch (erro) {
+            if (
+                caminhoTemporario &&
+                fs.existsSync(caminhoTemporario)
+            ) {
+                try {
+                    fs.unlinkSync(caminhoTemporario);
+                } catch (_) {}
+            }
+
+            console.error(
+                "[NEXUS VIDEO] Falha no upload:",
+                erro.message
+            );
+
+            return res.status(500).json({
+                ok: false,
+                erro: "Erro ao processar o upload do vídeo.",
+                detalhe: erro.message
+            });
+        }
+    }
+);
+
+app.get("/api/video/listar", async (req, res) => {
+    try {
+        const autenticacao = obterAutenticacaoStudio(req);
+
+        if (!autenticacao) {
+            return res.status(401).json({
+                ok: false,
+                erro: "Autorização do Studio inválida ou expirada."
+            });
+        }
+
+        const resultado = await listarVideosFirebase(
+            autenticacao.uid
+        );
+
+        if (!resultado.ok) {
+            return res.status(500).json({
+                ok: false,
+                erro: "Não foi possível carregar os vídeos.",
+                detalhe: resultado.erro
+            });
+        }
+
+        const dados = resultado.dados || {};
+
+        const videos = Object.values(dados)
+            .filter((video) => {
+                return (
+                    video &&
+                    String(video.uid || "") ===
+                        String(autenticacao.uid)
+                );
+            })
+            .sort((a, b) => {
+                return String(
+                    b.criado_em || ""
+                ).localeCompare(
+                    String(a.criado_em || "")
+                );
+            });
+
+        return res.json({
+            ok: true,
+            uid: autenticacao.uid,
+            videos
+        });
+    } catch (erro) {
+        console.error(
+            "[NEXUS VIDEO] Falha ao listar vídeos:",
+            erro.message
+        );
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Erro ao carregar a biblioteca de vídeos.",
+            detalhe: erro.message
+        });
+    }
+});
+
+app.delete("/api/video/excluir", async (req, res) => {
+    try {
+        const autenticacao = obterAutenticacaoStudio(req);
+
+        if (!autenticacao) {
+            return res.status(401).json({
+                ok: false,
+                erro: "Autorização do Studio inválida ou expirada."
+            });
+        }
+
+        const videoId = String(
+            req.body?.video_id ||
+            req.query?.video_id ||
+            ""
+        ).trim();
+
+        if (!videoId) {
+            return res.status(400).json({
+                ok: false,
+                erro: "ID do vídeo não informado."
+            });
+        }
+
+        const resultadoLista = await listarVideosFirebase(
+            autenticacao.uid
+        );
+
+        if (!resultadoLista.ok) {
+            return res.status(500).json({
+                ok: false,
+                erro: "Não foi possível verificar a propriedade do vídeo.",
+                detalhe: resultadoLista.erro
+            });
+        }
+
+        const dados = resultadoLista.dados || {};
+        const video = dados[videoId];
+
+        if (
+            !video ||
+            String(video.uid || "") !==
+                String(autenticacao.uid)
+        ) {
+            return res.status(404).json({
+                ok: false,
+                erro: "Vídeo não encontrado na sua biblioteca."
+            });
+        }
+
+        const publicId = String(
+            video.public_id || ""
+        ).trim();
+
+        if (!publicId) {
+            return res.status(500).json({
+                ok: false,
+                erro: "O vídeo não possui public_id do Cloudinary para exclusão segura."
+            });
+        }
+
+        const resultadoCloudinary =
+            await excluirVideoCloudinary(
+                publicId
+            );
+
+        if (!resultadoCloudinary.ok) {
+            console.error(
+                "[NEXUS CLOUDINARY] Falha ao excluir vídeo:",
+                resultadoCloudinary.erro
+            );
+
+            return res.status(
+                resultadoCloudinary.status || 502
+            ).json({
+                ok: false,
+                erro: "Não foi possível excluir o vídeo do Cloudinary.",
+                detalhe: resultadoCloudinary.erro
+            });
+        }
+
+        const resultadoExclusao =
+            await excluirVideoFirebase(
+                autenticacao.uid,
+                videoId
+            );
+
+        if (!resultadoExclusao.ok) {
+            return res.status(500).json({
+                ok: false,
+                erro: "Vídeo removido do Cloudinary, mas não foi possível remover seu registro do Firebase.",
+                detalhe: resultadoExclusao.erro
+            });
+        }
+
+        return res.json({
+            ok: true,
+            uid: autenticacao.uid,
+            video_id: videoId,
+            mensagem: "Vídeo removido da biblioteca com sucesso."
+        });
+    } catch (erro) {
+        console.error(
+            "[NEXUS VIDEO] Falha ao excluir vídeo:",
+            erro.message
+        );
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Erro ao excluir o vídeo.",
             detalhe: erro.message
         });
     }

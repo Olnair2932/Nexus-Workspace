@@ -19,6 +19,24 @@
     const btnLimpar = $("btnLimpar");
     const listaHTML = $("listaHTML");
 
+    // ============================================================
+    // NEXUS HTML STUDIO — IA / MÍDIA
+    // ============================================================
+    const imagemPrompt = $("imagemPrompt");
+    const btnGerarImagemIA = $("btnGerarImagemIA");
+    const aiImageResult = $("aiImageResult");
+    const aiImageResultPreview = $("aiImageResultPreview");
+    const btnUsarImagemIA = $("btnUsarImagemIA");
+
+    const produtoVideoArquivo = $("produtoVideoArquivo");
+    const btnEnviarVideo = $("btnEnviarVideo");
+    const btnAtualizarVideos = $("btnAtualizarVideos");
+    const listaVideos = $("listaVideos");
+    const videoUploadStatus = $("videoUploadStatus");
+
+    let imagemGeradaIA = "";
+
+
     const produtoExemplo = { nome: "Produto Exemplo Nexus", preco: "R$ 99,90", descricao: "Este é um produto de exemplo criado para testar o NEXUS HTML STUDIO." };
 
     function atualizarPreviewVideo() {
@@ -83,6 +101,204 @@
         atualizarPreview();
     });
 
+    function extrairUrlImagemCloudinary(dados) {
+        const urlsEncontradas = [];
+
+        function percorrer(valor, profundidade = 0) {
+            if (profundidade > 8 || valor === null || valor === undefined) {
+                return;
+            }
+
+            if (typeof valor === "string") {
+                const texto = valor.trim();
+
+                if (
+                    /^https:\/\/res\.cloudinary\.com\//i.test(texto) &&
+                    /\.(png|jpe?g|webp|gif|avif)(\?.*)?$/i.test(texto)
+                ) {
+                    urlsEncontradas.push(texto);
+                    return;
+                }
+
+                if (/^https:\/\/res\.cloudinary\.com\//i.test(texto)) {
+                    urlsEncontradas.push(texto);
+                }
+
+                return;
+            }
+
+            if (Array.isArray(valor)) {
+                valor.forEach((item) => percorrer(item, profundidade + 1));
+                return;
+            }
+
+            if (typeof valor === "object") {
+                const camposPrioritarios = [
+                    "secure_url",
+                    "url",
+                    "delivery_url",
+                    "image_url",
+                    "imageUrl"
+                ];
+
+                for (const campo of camposPrioritarios) {
+                    if (valor[campo]) {
+                        percorrer(valor[campo], profundidade + 1);
+                    }
+                }
+
+                Object.entries(valor).forEach(([chave, item]) => {
+                    if (!camposPrioritarios.includes(chave)) {
+                        percorrer(item, profundidade + 1);
+                    }
+                });
+            }
+        }
+
+        percorrer(dados);
+
+        return urlsEncontradas[0] || "";
+    }
+
+    if (btnGerarImagemIA) {
+        btnGerarImagemIA.addEventListener("click", async function () {
+            const prompt = imagemPrompt ? imagemPrompt.value.trim() : "";
+
+            if (!prompt) {
+                alert("Descreva a imagem que deseja gerar.");
+                if (imagemPrompt) imagemPrompt.focus();
+                return;
+            }
+
+            const textoOriginal = btnGerarImagemIA.textContent;
+
+            btnGerarImagemIA.disabled = true;
+            btnGerarImagemIA.textContent = "⏳ GERANDO IMAGEM...";
+
+            try {
+                const resposta = await fetch("/api/imagem/gerar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        prompt
+                    })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok || !dados.ok) {
+                    throw new Error(
+                        dados.erro || "Não foi possível gerar a imagem com IA."
+                    );
+                }
+
+                const urlImagem = extrairUrlImagemCloudinary(dados.imagem || dados);
+
+                if (!urlImagem) {
+                    console.error(
+                        "NEXUS IA — resposta Cloudinary sem URL de imagem:",
+                        dados
+                    );
+
+                    throw new Error(
+                        "A imagem foi processada, mas o Cloudinary não retornou uma URL reconhecível."
+                    );
+                }
+
+                imagemGeradaIA = urlImagem;
+
+                if (aiImageResultPreview) {
+                    aiImageResultPreview.src = urlImagem;
+                }
+
+                if (aiImageResult) {
+                    aiImageResult.style.display = "block";
+                }
+
+                btnGerarImagemIA.textContent = "✅ IMAGEM GERADA";
+            } catch (erro) {
+                console.error("NEXUS IA — erro ao gerar imagem:", erro);
+
+                alert(
+                    "❌ Erro ao gerar imagem:\n\n" +
+                    (erro.message || "Erro desconhecido.")
+                );
+
+                imagemGeradaIA = "";
+
+                btnGerarImagemIA.textContent = textoOriginal;
+            } finally {
+                btnGerarImagemIA.disabled = false;
+
+                setTimeout(() => {
+                    if (btnGerarImagemIA) {
+                        btnGerarImagemIA.textContent = "✨ GERAR IMAGEM COM IA";
+                    }
+                }, 2500);
+            }
+        });
+    }
+
+    if (btnUsarImagemIA) {
+        btnUsarImagemIA.addEventListener("click", async function () {
+            if (!imagemGeradaIA) {
+                alert("Nenhuma imagem gerada pela IA está disponível.");
+                return;
+            }
+
+            const textoOriginal = btnUsarImagemIA.textContent;
+            btnUsarImagemIA.disabled = true;
+            btnUsarImagemIA.textContent = "⏳ PREPARANDO IMAGEM...";
+
+            try {
+                const resposta = await fetch("/api/imagem/materializar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        url: imagemGeradaIA
+                    })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok || !dados.ok || !dados.url) {
+                    throw new Error(
+                        dados.erro || "Não foi possível preparar a imagem."
+                    );
+                }
+
+                imagemGeradaIA = dados.url;
+
+                if (imagem && imagem.files && imagem.files.length > 0) {
+                    imagem.value = "";
+                }
+
+                previewImagem.src = imagemGeradaIA;
+                previewImagem.style.display = "block";
+                previewTexto.style.display = "none";
+
+                produtoPreviewImagem.src = imagemGeradaIA;
+                produtoPreviewImagem.style.display = "block";
+                produtoPreviewPlaceholder.style.display = "none";
+
+                alert("✅ Imagem da IA selecionada para o anúncio.");
+            } catch (erro) {
+                console.error("[NEXUS IA] Erro ao preparar imagem:", erro);
+                alert(
+                    erro.message ||
+                    "Não foi possível preparar a imagem gerada pela IA."
+                );
+            } finally {
+                btnUsarImagemIA.disabled = false;
+                btnUsarImagemIA.textContent = textoOriginal;
+            }
+        });
+    }
+
     btnGerar.addEventListener("click", async function () {
         const nomeAtual = nome.value.trim();
         const precoAtual = preco.value.trim();
@@ -110,8 +326,9 @@
                 const dadosUpload = await respostaUpload.json();
                 if (!respostaUpload.ok ||!dadosUpload.ok) throw new Error(dadosUpload.erro || "Não foi possível enviar a imagem.");
                 imagemUrl = dadosUpload.url;
+            } else if (imagemGeradaIA) {
+                imagemUrl = imagemGeradaIA;
             }
-            btnGerar.textContent = "🤖 GEMINI 3.1 LITE GERANDO...";
             const resposta = await fetch("/api/html/gerar", {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

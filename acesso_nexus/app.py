@@ -621,12 +621,6 @@ def api_contratar_plano():
             "erro": "Usuário não encontrado."
         }), 404
 
-    if usuario.get("status") != "ativo":
-        return jsonify({
-            "ok": False,
-            "erro": "Acesso suspenso."
-        }), 403
-
     if usuario.get("perfil") == "admin":
         return jsonify({
             "ok": False,
@@ -634,7 +628,9 @@ def api_contratar_plano():
         }), 400
 
     dados = request.get_json(silent=True) or {}
-    novo_plano = str(dados.get("plano", "")).strip().lower()
+    novo_plano = str(
+        dados.get("plano", "")
+    ).strip().lower()
 
     planos = {
         "basico": {
@@ -657,18 +653,29 @@ def api_contratar_plano():
             "erro": "Plano inválido."
         }), 400
 
-    agora = datetime.now()
-    prazo = agora + timedelta(hours=24)
+    agora = datetime.now(timezone.utc)
+    prazo_pagamento = agora + timedelta(hours=24)
+
+    plano_atual = usuario.get(
+        "plano",
+        "gratuito"
+    )
 
     pagamento = {
         "status": "aguardando_confirmacao",
-        "plano": novo_plano,
+        "tipo": (
+            "renovacao"
+            if plano_atual == novo_plano
+            else "contratacao_ou_troca"
+        ),
+        "plano_anterior": plano_atual,
+        "plano_solicitado": novo_plano,
         "nome_plano": planos[novo_plano]["nome"],
         "valor": planos[novo_plano]["valor"],
         "pix": "55981011208",
         "whatsapp": "55981011208",
         "solicitado_em": agora.isoformat(),
-        "prazo_24h": prazo.isoformat()
+        "prazo_24h": prazo_pagamento.isoformat()
     }
 
     referencia = db.reference(
@@ -676,23 +683,26 @@ def api_contratar_plano():
     )
 
     referencia.update({
-        "plano": novo_plano,
-        "limites": obter_limites_padrao(novo_plano),
         "pagamento_plano": pagamento
     })
 
-    inicializar_uso_usuario(uid, novo_plano)
-
     return jsonify({
         "ok": True,
-        "mensagem": "Plano ativado com sucesso.",
-        "plano": novo_plano,
+        "mensagem": (
+            "Solicitação registrada. "
+            "Faça o Pix e aguarde a confirmação "
+            "do administrador."
+        ),
+        "plano_atual": plano_atual,
+        "plano_solicitado": novo_plano,
         "nome_plano": planos[novo_plano]["nome"],
         "valor": planos[novo_plano]["valor"],
         "pix": "55981011208",
         "whatsapp": "55981011208",
         "pagamento": pagamento
     })
+
+
 
 @app.route("/api/admin/usuarios")
 def api_admin_usuarios():
@@ -735,6 +745,153 @@ def api_admin_usuarios():
     })
 
 
+
+
+@app.route(
+    "/api/admin/usuarios/<usuario_uid>/confirmar-pagamento",
+    methods=["POST"]
+)
+def api_admin_confirmar_pagamento(usuario_uid):
+    uid = session.get("uid")
+
+    if not uid:
+        return jsonify({
+            "ok": False,
+            "erro": "Não autenticado."
+        }), 401
+
+    administrador = obter_usuario(uid)
+
+    if not administrador:
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Administrador não encontrado."
+        }), 401
+
+    if administrador.get("status") != "ativo":
+        session.clear()
+        return jsonify({
+            "ok": False,
+            "erro": "Acesso suspenso."
+        }), 403
+
+    if administrador.get("perfil") != "admin":
+        return jsonify({
+            "ok": False,
+            "erro": (
+                "Acesso permitido somente para "
+                "administradores."
+            )
+        }), 403
+
+    if usuario_uid == uid:
+        return jsonify({
+            "ok": False,
+            "erro": (
+                "O administrador não precisa "
+                "confirmar pagamento próprio."
+            )
+        }), 400
+
+    referencia = db.reference(
+        f"nexus/acesso/usuarios/{usuario_uid}"
+    )
+
+    usuario = referencia.get()
+
+    if not usuario:
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não encontrado."
+        }), 404
+
+    pagamento = usuario.get("pagamento_plano")
+
+    if not isinstance(pagamento, dict):
+        return jsonify({
+            "ok": False,
+            "erro": "Nenhuma solicitação de pagamento encontrada."
+        }), 400
+
+    if pagamento.get("status") != "aguardando_confirmacao":
+        return jsonify({
+            "ok": False,
+            "erro": (
+                "Este pagamento não está aguardando "
+                "confirmação."
+            )
+        }), 400
+
+    novo_plano = str(
+        pagamento.get("plano_solicitado", "")
+    ).strip().lower()
+
+    planos = {
+        "basico": {
+            "nome": "Básico",
+            "valor": 25.00
+        },
+        "pro": {
+            "nome": "Pro",
+            "valor": 50.00
+        },
+        "premium": {
+            "nome": "Premium",
+            "valor": 75.00
+        }
+    }
+
+    if novo_plano not in planos:
+        return jsonify({
+            "ok": False,
+            "erro": "Plano solicitado inválido."
+        }), 400
+
+    agora = datetime.now(timezone.utc)
+    fim_vigencia = agora + timedelta(days=30)
+
+    vigencia = {
+        "inicio": agora.isoformat(),
+        "fim": fim_vigencia.isoformat(),
+        "dias": 30,
+        "tipo": (
+            "renovacao"
+            if pagamento.get("tipo") == "renovacao"
+            else "novo_plano"
+        )
+    }
+
+    pagamento_confirmado = dict(pagamento)
+    pagamento_confirmado.update({
+        "status": "confirmado",
+        "confirmado_em": agora.isoformat()
+    })
+
+    referencia.update({
+        "status": "ativo",
+        "plano": novo_plano,
+        "limites": obter_limites_padrao(novo_plano),
+        "vigencia_plano": vigencia,
+        "pagamento_plano": pagamento_confirmado,
+        "uso": {
+            "geracoes": 0,
+            "uploads": 0,
+            "consultas": 0,
+            "ultimo_reset": agora.isoformat()
+        }
+    })
+
+    return jsonify({
+        "ok": True,
+        "mensagem": "Pagamento confirmado e plano ativado.",
+        "uid": usuario_uid,
+        "plano": novo_plano,
+        "nome_plano": planos[novo_plano]["nome"],
+        "valor": planos[novo_plano]["valor"],
+        "vigencia": vigencia,
+        "pagamento": pagamento_confirmado
+    })
 
 
 @app.route("/api/admin/usuarios/<usuario_uid>/plano", methods=["POST"])
