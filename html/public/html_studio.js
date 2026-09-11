@@ -142,6 +142,113 @@
         produtoPreviewVideoPlayer.load();
     }
 
+    async function carregarMeusVideos() {
+        if (!listaVideos) return;
+
+        listaVideos.innerHTML = '<div class="media-library-empty">⏳ Carregando vídeos...</div>';
+
+        try {
+            const resposta = await fetch("/api/video/listar", {
+                method: "GET"
+            });
+
+            const dados = await resposta.json();
+
+            if (!resposta.ok || !dados.ok) {
+                throw new Error(dados.erro || "Não foi possível carregar os vídeos.");
+            }
+
+            const videos = Array.isArray(dados.videos) ? dados.videos : [];
+
+            if (!videos.length) {
+                listaVideos.innerHTML =
+                    '<div class="media-library-empty">Nenhum vídeo encontrado.</div>';
+                return;
+            }
+
+            listaVideos.innerHTML = "";
+
+            videos.forEach(function (video) {
+                const urlVideo =
+                    video.secure_url ||
+                    video.url ||
+                    "";
+
+                if (!urlVideo) return;
+
+                const item = document.createElement("div");
+                item.className = "video-library-item";
+
+                const player = document.createElement("video");
+                player.controls = true;
+                player.playsInline = true;
+                player.preload = "metadata";
+                player.src = urlVideo;
+
+                const nomeVideo = document.createElement("div");
+                nomeVideo.className = "video-library-name";
+                nomeVideo.textContent =
+                    video.nome ||
+                    video.original_filename ||
+                    "Vídeo";
+
+                const botaoUsar = document.createElement("button");
+                botaoUsar.type = "button";
+                botaoUsar.className = "btn-primary";
+                botaoUsar.textContent = "🎬 USAR NO ANÚNCIO";
+
+                botaoUsar.addEventListener("click", function () {
+                    if (produtoVideo) {
+                        produtoVideo.value = urlVideo;
+                        produtoVideo.dispatchEvent(
+                            new Event("input", { bubbles: true })
+                        );
+                        produtoVideo.dispatchEvent(
+                            new Event("change", { bubbles: true })
+                        );
+                    }
+
+                    atualizarPreviewVideo();
+
+                    if (videoUploadStatus) {
+                        videoUploadStatus.textContent =
+                            "✅ Vídeo selecionado da biblioteca.";
+                    }
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: "smooth"
+                    });
+                });
+
+                item.appendChild(nomeVideo);
+                item.appendChild(player);
+                item.appendChild(botaoUsar);
+                listaVideos.appendChild(item);
+            });
+
+            if (!listaVideos.children.length) {
+                listaVideos.innerHTML =
+                    '<div class="media-library-empty">Nenhum vídeo encontrado.</div>';
+            }
+
+        } catch (erro) {
+            console.error("[NEXUS VÍDEOS] Erro ao carregar biblioteca:", erro);
+
+            listaVideos.innerHTML =
+                '<div class="media-library-empty">❌ ' +
+                (erro.message || "Erro ao carregar vídeos.") +
+                '</div>';
+        }
+    }
+
+    if (btnAtualizarVideos) {
+        btnAtualizarVideos.addEventListener(
+            "click",
+            carregarMeusVideos
+        );
+    }
+
     function atualizarPreview() {
         produtoPreviewNome.textContent = nome.value.trim() || produtoExemplo.nome;
         produtoPreviewPreco.textContent = preco.value.trim() || produtoExemplo.preco;
