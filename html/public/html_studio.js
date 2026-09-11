@@ -39,6 +39,90 @@
 
     const produtoExemplo = { nome: "Produto Exemplo Nexus", preco: "R$ 99,90", descricao: "Este é um produto de exemplo criado para testar o NEXUS HTML STUDIO." };
 
+    if (btnEnviarVideo) {
+        btnEnviarVideo.addEventListener("click", async function () {
+            if (!produtoVideoArquivo || !produtoVideoArquivo.files || !produtoVideoArquivo.files.length) {
+                alert("Selecione um vídeo do aparelho.");
+                return;
+            }
+
+            const arquivoVideo = produtoVideoArquivo.files[0];
+
+            if (!arquivoVideo.type || !arquivoVideo.type.startsWith("video/")) {
+                alert("Selecione um arquivo de vídeo válido.");
+                return;
+            }
+
+            const textoOriginal = btnEnviarVideo.textContent;
+            btnEnviarVideo.disabled = true;
+            btnEnviarVideo.textContent = "⏳ ENVIANDO VÍDEO...";
+
+            if (videoUploadStatus) {
+                videoUploadStatus.textContent = "☁️ Enviando vídeo para o Cloudinary...";
+            }
+
+            try {
+                const formulario = new FormData();
+                formulario.append("video", arquivoVideo);
+
+                const resposta = await fetch("/api/video/upload", {
+                    method: "POST",
+                    body: formulario
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok || !dados.ok) {
+                    throw new Error(
+                        dados.erro || "Não foi possível enviar o vídeo."
+                    );
+                }
+
+                const urlVideo =
+                    dados.video?.secure_url ||
+                    dados.video?.url ||
+                    dados.secure_url ||
+                    dados.url ||
+                    "";
+
+                if (!urlVideo) {
+                    throw new Error(
+                        "O Cloudinary não retornou a URL do vídeo."
+                    );
+                }
+
+                if (produtoVideo) {
+                    produtoVideo.value = urlVideo;
+                    produtoVideo.dispatchEvent(new Event("input", { bubbles: true }));
+                    produtoVideo.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+
+                atualizarPreviewVideo();
+
+                if (videoUploadStatus) {
+                    videoUploadStatus.textContent = "✅ Vídeo enviado com sucesso.";
+                }
+
+                alert("✅ Vídeo enviado e adicionado ao anúncio.");
+            } catch (erro) {
+                console.error("[NEXUS VÍDEO] Erro no upload:", erro);
+
+                if (videoUploadStatus) {
+                    videoUploadStatus.textContent =
+                        erro.message || "Erro ao enviar vídeo.";
+                }
+
+                alert(
+                    erro.message ||
+                    "Não foi possível enviar o vídeo."
+                );
+            } finally {
+                btnEnviarVideo.disabled = false;
+                btnEnviarVideo.textContent = textoOriginal;
+            }
+        });
+    }
+
     function atualizarPreviewVideo() {
         if (!produtoVideo || !produtoPreviewVideo || !produtoPreviewVideoPlayer) {
             return;
