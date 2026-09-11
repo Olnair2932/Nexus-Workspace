@@ -551,7 +551,40 @@
         listaHTML.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><strong>Nenhuma página criada</strong><span>As páginas geradas pelo Nexus aparecerão aqui.</span></div>`;
     }
 
-    function iniciar() { atualizarPreview(); mostrarEstadoInicial(); console.log("NEXUS HTML STUDIO iniciado - gemini-3.1-flash-lite - ~/workspace"); }
+    async function manterSessaoStudio() {
+    try {
+        const resposta = await fetch("/api/studio/renovar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            credentials: "same-origin"
+        });
+
+        const dados = await resposta.json().catch(() => ({}));
+
+        if (!resposta.ok || !dados.ok) {
+            console.warn(
+                "[NEXUS AUTH] Não foi possível renovar a sessão:",
+                dados.erro || ("HTTP " + resposta.status)
+            );
+            return;
+        }
+
+        console.log("[NEXUS AUTH] ✅ Sessão do Studio renovada.");
+
+    } catch (erro) {
+        console.warn(
+            "[NEXUS AUTH] Falha na manutenção da sessão:",
+            erro
+        );
+    }
+}
+
+manterSessaoStudio();
+setInterval(manterSessaoStudio, 4 * 60 * 1000);
+
+function iniciar() { atualizarPreview(); mostrarEstadoInicial(); console.log("NEXUS HTML STUDIO iniciado - gemini-3.1-flash-lite - ~/workspace"); }
     iniciar();
 })();
 

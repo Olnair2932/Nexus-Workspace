@@ -1761,6 +1761,60 @@ app.delete("/api/video/excluir", async (req, res) => {
     }
 });
 
+app.post("/api/studio/renovar", async (req, res) => {
+    try {
+        const tokenAtual = obterTokenStudio(req);
+
+        if (!tokenAtual || !validarTokenStudio(tokenAtual)) {
+            return res.status(401).json({
+                ok: false,
+                erro: "Autorização do Studio inválida ou expirada."
+            });
+        }
+
+        const resposta = await fetch(`${ACESSO_URL}/api/studio/renovar`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                token: tokenAtual
+            })
+        });
+
+        const dados = await resposta.json().catch(() => ({}));
+
+        if (!resposta.ok || !dados.ok || !dados.token) {
+            return res.status(resposta.status || 401).json({
+                ok: false,
+                erro: dados.erro || "Não foi possível renovar a autorização do Studio."
+            });
+        }
+
+        const novoToken = String(dados.token);
+
+        res.setHeader(
+            "Set-Cookie",
+            `${STUDIO_COOKIE}=${encodeURIComponent(novoToken)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${STUDIO_TOKEN_MAX_AGE}`
+        );
+
+        return res.json({
+            ok: true,
+            uid: dados.uid || null,
+            exp: dados.exp || null
+        });
+
+    } catch (erro) {
+        console.error("[NEXUS AUTH] Erro ao renovar sessão do Studio:", erro);
+
+        return res.status(500).json({
+            ok: false,
+            erro: "Erro interno ao renovar a autorização do Studio."
+        });
+    }
+});
+
+
 app.get("/", (req, res) => {
     const tokenQuery = String(req.query?.nexus_token || "").trim();
 

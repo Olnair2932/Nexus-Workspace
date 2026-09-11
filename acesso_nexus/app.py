@@ -180,6 +180,56 @@ def abrir_studio():
     )
 
 
+@app.route("/api/studio/renovar", methods=["POST"])
+def renovar_studio():
+    dados = request.get_json(silent=True) or {}
+    token = str(dados.get("token") or "").strip()
+
+    if not token:
+        return jsonify({
+            "ok": False,
+            "erro": "Token do Studio não informado."
+        }), 401
+
+    usuario_token = validar_token_studio(token)
+
+    if not usuario_token or not usuario_token.get("uid"):
+        return jsonify({
+            "ok": False,
+            "erro": "Autorização do Studio inválida ou expirada."
+        }), 401
+
+    uid = str(usuario_token["uid"])
+    usuario = obter_usuario(uid)
+
+    if not usuario:
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não encontrado."
+        }), 401
+
+    if usuario.get("status") != "ativo":
+        return jsonify({
+            "ok": False,
+            "erro": "Usuário não está ativo."
+        }), 403
+
+    try:
+        novo_token = gerar_token_studio(uid)
+    except RuntimeError as erro:
+        return jsonify({
+            "ok": False,
+            "erro": str(erro)
+        }), 500
+
+    return jsonify({
+        "ok": True,
+        "token": novo_token,
+        "uid": uid,
+        "exp": int(time.time()) + 600
+    })
+
+
 @app.route("/api/studio/uso", methods=["POST"])
 def registrar_uso_studio():
     dados = request.get_json(silent=True) or {}
