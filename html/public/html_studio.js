@@ -221,8 +221,41 @@
                     });
                 });
 
+                const linhaLink = document.createElement("div");
+                linhaLink.style.marginTop = "10px";
+                linhaLink.style.wordBreak = "break-all";
+
+                const linkVideo = document.createElement("a");
+                linkVideo.href = urlVideo;
+                linkVideo.target = "_blank";
+                linkVideo.rel = "noopener noreferrer";
+                linkVideo.textContent = "🔗 " + urlVideo;
+                linkVideo.style.fontSize = "13px";
+
+                const botaoCopiar = document.createElement("button");
+                botaoCopiar.type = "button";
+                botaoCopiar.className = "btn-primary";
+                botaoCopiar.textContent = "📋 COPIAR LINK";
+
+                botaoCopiar.addEventListener("click", async function () {
+                    try {
+                        await navigator.clipboard.writeText(urlVideo);
+                        botaoCopiar.textContent = "✅ LINK COPIADO";
+                        setTimeout(function () {
+                            botaoCopiar.textContent = "📋 COPIAR LINK";
+                        }, 2000);
+                    } catch (erro) {
+                        window.prompt("Copie o link do vídeo:", urlVideo);
+                    }
+                });
+
+                linhaLink.appendChild(linkVideo);
+                linhaLink.appendChild(document.createElement("br"));
+                linhaLink.appendChild(botaoCopiar);
+
                 item.appendChild(nomeVideo);
                 item.appendChild(player);
+                item.appendChild(linhaLink);
                 item.appendChild(botaoUsar);
                 listaVideos.appendChild(item);
             });
