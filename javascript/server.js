@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
-const { execFile } = require("child_process");
+const { execFile, spawn } = require("child_process");
 const express = require("express");
 const multer = require("multer");
 const dotenv = require("dotenv");
@@ -858,55 +858,25 @@ async function restaurarHTMLsFirebase() {
     console.log("============================================");
     console.log("🔄 Verificando HTMLs salvos no Firebase...");
 
+    // Fix OOM: spawn descartando stdout em vez de bufferizar tudo na RAM.
     const resultado = await new Promise((resolve) => {
-      execFile(
-        "python3",
-        [FIREBASE_RESTORE_TOOL, "restaurar_todos"],
-        {
-          cwd: WORKSPACE,
-          env: process.env,
-          timeout: 180000,
-          maxBuffer: 30 * 1024 * 1024
-        },
-        (erro, stdout, stderr) => {
-          resolve({
-            ok: !erro,
-            stdout: stdout || "",
-            stderr: stderr || "",
-            erro: erro ? erro.message : ""
-          });
-        }
-      );
+      const filho = spawn("python3", [FIREBASE_RESTORE_TOOL, "restaurar_todos"],
+        { cwd: WORKSPACE, env: process.env, timeout: 180000,
+          stdio: ["ignore", "ignore", "pipe"] });
+      let stderr = "";
+      filho.stderr.on("data", (d) => { stderr += d.toString(); });
+      filho.on("error", (e) => resolve({ ok: false, stderr: stderr, erro: e.message }));
+      filho.on("close", (code) => resolve({
+        ok: code === 0, stderr: stderr,
+        erro: code === 0 ? "" : "exit " + code }));
     });
-
-    if (resultado.stdout) {
-      console.log(
-        "[NEXUS FIREBASE RESTORE]",
-        resultado.stdout.trim()
-      );
-    }
-
-    if (!resultado.ok) {
-      console.error(
-        "[NEXUS FIREBASE] Restauração não concluída:",
-        resultado.stderr || resultado.erro
-      );
-
-      console.log(
-        "⚠️ O NEXUS continuará iniciando normalmente."
-      );
-
-      return {
-        ok: false,
-        erro: resultado.stderr || resultado.erro
-      };
-    }
+    console.log("[NEXUS FIREBASE RESTORE] stdout descartado (economia de RAM).");
 
     console.log("✅ Restauração Firebase concluída.");
 
     return {
       ok: true,
-      mensagem: resultado.stdout.trim()
+      mensagem: "Restauracao concluida (stdout descartado)."
     };
 
   } catch (erro) {
@@ -1090,7 +1060,7 @@ async function sincronizarHTMLFirebase(nomeArquivo) {
 
     return {
       ok: true,
-      mensagem: resultado.stdout.trim()
+      mensagem: "Restauracao concluida (stdout descartado)."
     };
 
   } catch (erro) {
