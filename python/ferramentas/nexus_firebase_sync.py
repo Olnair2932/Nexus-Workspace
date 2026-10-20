@@ -791,10 +791,10 @@ def restaurar_todos():
         print("❌ Não foi possível autenticar no Firebase.")
         return False
 
-    print("☁️ Consultando HTMLs no Firebase...")
+    print("☁️ Consultando chaves de HTMLs no Firebase (modo economico de RAM)...")
 
-    ok, resposta = requisicao_firebase(
-        firebase_url(),
+    ok, chaves = requisicao_firebase(
+        firebase_url() + "?shallow=true",
         token=token
     )
 
@@ -802,20 +802,23 @@ def restaurar_todos():
         print("❌ Falha ao consultar Firebase.")
         print(
             json.dumps(
-                resposta,
+                chaves,
                 ensure_ascii=False,
                 indent=2
             )
         )
         return False
 
-    if not resposta:
+    if not chaves:
         print("📭 Nenhum HTML encontrado no Firebase.")
         return True
 
-    if not isinstance(resposta, dict):
+    if not isinstance(chaves, dict):
         print("❌ Resposta inesperada do Firebase.")
         return False
+
+    total = len(chaves)
+    print(f"📦 {total} registro(s) encontrado(s). Baixando um por vez...")
 
     paginas = []
     restaurados = 0
@@ -823,9 +826,13 @@ def restaurar_todos():
 
     HTML_DIR.mkdir(parents=True, exist_ok=True)
 
-    for chave, registro in resposta.items():
+    for i, chave in enumerate(chaves.keys(), 1):
+        ok_rec, registro = requisicao_firebase(
+            firebase_url(chave),
+            token=token
+        )
 
-        if not isinstance(registro, dict):
+        if not ok_rec or not isinstance(registro, dict):
             ignorados += 1
             continue
 
@@ -876,7 +883,10 @@ def restaurar_todos():
         paginas.append(pagina)
         restaurados += 1
 
-        print(f"✅ Restaurado: {nome}")
+        del registro
+
+        if i % 10 == 0 or i == total:
+            print(f"⏳ {i}/{total} processados ({restaurados} restaurados)...")
 
     index_file = HTML_DIR / "index.json"
 

@@ -861,7 +861,7 @@ async function restaurarHTMLsFirebase() {
     // Fix OOM: spawn descartando stdout em vez de bufferizar tudo na RAM.
     const resultado = await new Promise((resolve) => {
       const filho = spawn("python3", [FIREBASE_RESTORE_TOOL, "restaurar_todos"],
-        { cwd: WORKSPACE, env: process.env, timeout: 180000,
+        { cwd: WORKSPACE, env: process.env, timeout: 600000,
           stdio: ["ignore", "ignore", "pipe"] });
       let stderr = "";
       filho.stderr.on("data", (d) => { stderr += d.toString(); });
@@ -2305,7 +2305,7 @@ Use exatamente essa URL como fonte de um elemento <video controls playsinline pr
 
     const gerador = path.join(PYTHON_DIR, "gerar_codigo.py");
     const resultado = await new Promise((resolve) => {
-        execFile("python3", [gerador, solicitacao], { cwd: WORKSPACE, env: process.env, timeout: 180000, maxBuffer: 30 * 1024 * 1024 }, (erro, stdout, stderr) => {
+        execFile("python3", [gerador, solicitacao], { cwd: WORKSPACE, env: process.env, timeout: 600000, maxBuffer: 30 * 1024 * 1024 }, (erro, stdout, stderr) => {
             resolve({ ok: !erro, stdout: stdout || "", stderr: stderr || "", erro: erro ? erro.message : "" });
         });
     });
@@ -2372,12 +2372,7 @@ async function iniciarNexus() {
     console.log("============================================");
 
     // --------------------------------------------------------
-    // RESTAURAÇÃO AUTOMÁTICA DOS HTMLs DO FIREBASE
-    // --------------------------------------------------------
-    await restaurarHTMLsFirebase();
-
-    // --------------------------------------------------------
-    // INICIA O SERVIDOR SOMENTE APÓS A RESTAURAÇÃO
+    // INICIA O SERVIDOR PRIMEIRO (Render exige porta aberta)
     // --------------------------------------------------------
     app.listen(PORT, "0.0.0.0", () => {
         console.log(`✅ NEXUS STUDIO gemini-3.1-flash-lite rodando http://127.0.0.1:${PORT}`);
@@ -2387,6 +2382,14 @@ async function iniciarNexus() {
         console.log(`UPLOADS=${UPLOADS_DIR}`);
         console.log("☁️ Firebase: restauração automática habilitada.");
         console.log("============================================");
+    });
+
+    // --------------------------------------------------------
+    // RESTAURAÇÃO EM BACKGROUND (nao bloqueia a porta)
+    // --------------------------------------------------------
+    restaurarHTMLsFirebase().then((r) => {
+        console.log("[NEXUS FIREBASE] Restauracao em background finalizada:",
+            r.ok ? "OK" : "FALHA - " + (r.erro || r.stderr || ""));
     });
 }
 
