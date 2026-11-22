@@ -2,6 +2,7 @@
 
 import sys
 import json
+import subprocess
 from pathlib import Path
 
 
@@ -149,6 +150,24 @@ def main():
                 arquivo=arquivo,
                 detalhe=str(exc)
             )
+
+    # --------------------------------------------------------
+    # EXCLUI TAMBÉM DO FIREBASE REALTIME
+    # [STRIPPED 73 bytes] = None
+    firebase_detalhe = ""
+    try:
+        sync_script = BASE_DIR / "python" / "ferramentas" / "nexus_firebase_sync.py"
+        if sync_script.exists():
+            proc = subprocess.run(
+                [sys.executable, str(sync_script), "excluir", arquivo],
+                capture_output=True, text=True, timeout=60
+            )
+            firebase_excluido = (proc.returncode == 0)
+            firebase_detalhe = (proc.stdout + proc.stderr)[-500:]
+        else:
+            firebase_detalhe = "sync script não encontrado"
+    except Exception as exc:
+        firebase_detalhe = str(exc)
 
     # --------------------------------------------------------
     # SUCESSO

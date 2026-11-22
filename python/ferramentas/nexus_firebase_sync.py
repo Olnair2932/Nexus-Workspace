@@ -960,6 +960,11 @@ def main():
             else 1
         )
 
+    if comando == "excluir":
+        if len(sys.argv) < 3:
+            print("❌ Informe o arquivo HTML.")
+            return 1
+        return 0 if excluir(sys.argv[2]) else 1
     if comando == "restaurar_todos":
 
         return 0 if restaurar_todos() else 1
