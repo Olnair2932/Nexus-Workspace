@@ -1109,3 +1109,40 @@ async function salvarHTML() {
         }
     }
 }
+
+// ===== BOTÃO FLUTUANTE VOLTAR AO TOPO =====
+(function criarBotaoTopoNexus(){
+  function init(){
+    if (document.getElementById("btnVoltarTopoNexus")) return;
+    const style = document.createElement("style");
+    style.textContent = `
+      #btnVoltarTopoNexus{
+        position: fixed; right: 16px; bottom: 80px; z-index: 9999;
+        width: 52px; height: 52px; border-radius: 50%; border: none;
+        background: #00d4ff; color: #001018; font-size: 24px; font-weight: 800;
+        cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+        display: none; align-items: center; justify-content: center;
+        transition: transform .15s ease, opacity .2s ease;
+      }
+      #btnVoltarTopoNexus:active{ transform: scale(.92); }
+      #btnVoltarTopoNexus.mostrar{ display: flex; }
+    `;
+    document.head.appendChild(style);
+    const btn = document.createElement("button");
+    btn.id = "btnVoltarTopoNexus";
+    btn.type = "button";
+    btn.title = "Voltar ao topo";
+    btn.setAttribute("aria-label", "Voltar ao topo");
+    btn.textContent = "↑";
+    btn.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
+    document.body.appendChild(btn);
+    const checar = () => {
+      if (window.scrollY > 400) btn.classList.add("mostrar");
+      else btn.classList.remove("mostrar");
+    };
+    window.addEventListener("scroll", checar, { passive: true });
+    checar();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
