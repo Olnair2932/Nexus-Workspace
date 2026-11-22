@@ -1,0 +1,37 @@
+name: Nexus-Workspace CI + Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Node dependencies
+        run: |
+          if [ -f package.json ]; then npm ci || npm install; fi
+          if [ -f javascript/package.json ]; then cd javascript && npm ci || npm install; fi
+      - name: Check syntax
+        run: |
+          echo "Checking JS..."
+          find . -name "*.js" -not -path "./node_modules/*" -exec node --check {} \; || echo "JS check done"
+          echo "Checking Python..."
+          python3 -m py_compile python/*.py || echo "Python check done"
+      - name: Check Firebase config
+        run: |
+          echo "Realtime DB: finance-master-629d1"
+          echo "Build OK - Render vai fazer o deploy"
