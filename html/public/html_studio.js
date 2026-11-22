@@ -639,17 +639,61 @@ async function copiarHTML(arquivo) {
     const resposta = await fetch("/html_gerados/" + encodeURIComponent(arquivo));
     if (!resposta.ok) throw new Error("Erro HTTP " + resposta.status);
     const conteudo = await resposta.text();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(conteudo);
-    } else {
-      const area = document.createElement("textarea");
-      area.value = conteudo;
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand("copy");
-      document.body.removeChild(area);
+
+    // 1. Tenta copiar de verdade
+    let copiou = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(conteudo);
+        copiou = true;
+      }
+    } catch (e) { copiou = false; }
+
+    // 2. Se não copiou, tenta o modo antigo (textarea + execCommand)
+    if (!copiou) {
+      try {
+        const area = document.createElement("textarea");
+        area.value = conteudo;
+        area.style.position = "fixed";
+        area.style.opacity = "1";
+        area.style.left = "10px";
+        area.style.top = "10px";
+        area.style.width = "90%";
+        area.style.height = "200px";
+        area.style.zIndex = "9999";
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        area.setSelectionRange(0, area.value.length);
+        copiou = document.execCommand("copy");
+        // Não remove na hora, deixa você ver e segurar pra copiar se precisar
+        setTimeout(() => { if (document.body.contains(area)) document.body.removeChild(area); }, 8000);
+      } catch (e) { copiou = false; }
     }
-    alert("📋 HTML copiado! Agora é só colar onde quiser. Ele fica disponível por 24h.");
+
+    if (copiou) {
+      alert("📋 HTML copiado! (" + conteudo.length + " letras) Agora é só colar onde quiser. Ele fica disponível por 24h.");
+    } else {
+      // 3. Último jeito: abre caixinha com o HTML selecionado pra você segurar e copiar
+      const caixa = document.createElement("textarea");
+      caixa.value = conteudo;
+      caixa.readOnly = true;
+      caixa.style.position = "fixed";
+      caixa.style.left = "5%";
+      caixa.style.top = "10%";
+      caixa.style.width = "90%";
+      caixa.style.height = "70%";
+      caixa.style.zIndex = "10000";
+      caixa.style.background = "#fff";
+      caixa.style.color = "#000";
+      caixa.style.fontSize = "14px";
+      caixa.style.padding = "10px";
+      document.body.appendChild(caixa);
+      caixa.focus();
+      caixa.select();
+      alert("⚠️ O celular bloqueou o copiar automático. Segure o texto na caixinha que abriu, toque em SELECIONAR TUDO e depois COPIAR. Depois feche a caixinha clicando nela 2 vezes.");
+      caixa.addEventListener("dblclick", () => caixa.remove());
+    }
   } catch (erro) {
     console.error("NEXUS: erro ao copiar", erro);
     alert("❌ Erro ao copiar: " + erro.message);
