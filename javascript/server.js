@@ -1785,6 +1785,33 @@ app.post("/api/studio/renovar", async (req, res) => {
 });
 
 
+// Limpeza automática 24h - roda dentro do Render, sem Secrets novas no GitHub
+const LIMPEZA_SCRIPT = path.join(WORKSPACE, "python", "ferramentas", "nexus_html_limpeza_24h.py");
+function executarLimpeza24h() {
+  try {
+    const { execFile } = require("child_process");
+    execFile("python3", [LIMPEZA_SCRIPT], { cwd: WORKSPACE, timeout: 120000 }, (erro, stdout, stderr) => {
+      if (erro) console.log("[NEXUS LIMPEZA 24h] Falha:", stderr || erro.message);
+      else console.log("[NEXUS LIMPEZA 24h]", stdout.trim().slice(0, 500));
+    });
+  } catch (e) {
+    console.log("[NEXUS LIMPEZA 24h] Erro:", e.message);
+  }
+}
+// Roda a cada 1h + 5 min depois de iniciar
+setInterval(executarLimpeza24h, 60 * 60 * 1000);
+setTimeout(executarLimpeza24h, 5 * 60 * 1000);
+
+// Endpoint manual para testar - só admin
+app.post("/api/limpeza/24h", (req, res) => {
+  const autenticacao = obterAutenticacaoStudio(req);
+  if (!autenticacao || !autenticacao.admin) {
+    return res.status(403).json({ ok: false, erro: "Somente admin pode rodar a limpeza." });
+  }
+  executarLimpeza24h();
+  return res.json({ ok: true, mensagem: "Limpeza 24h disparada." });
+});
+
 app.get("/", (req, res) => {
     const tokenQuery = String(req.query?.nexus_token || "").trim();
 
