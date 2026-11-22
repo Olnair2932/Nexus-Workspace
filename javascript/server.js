@@ -251,6 +251,28 @@ async function enviarVideoCloudinary(caminhoArquivo) {
     }
 }
 
+async function enviarImagemCloudinary(caminhoArquivo) {
+  const config = obterCloudinaryConfig();
+  if (!config) return { ok: false, erro: "CLOUDINARY_URL não configurada." };
+  if (!caminhoArquivo || !fs.existsSync(caminhoArquivo)) return { ok: false, erro: "Arquivo de imagem não encontrado." };
+  try {
+    const arquivo = fs.readFileSync(caminhoArquivo);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const crypto = require("crypto");
+    const assinatura = crypto.createHash("sha1").update(`timestamp=${timestamp}${config.apiSecret}`).digest("hex");
+    const formulario = new FormData();
+    formulario.append("file", new Blob([arquivo]), path.basename(caminhoArquivo));
+    formulario.append("api_key", config.apiKey);
+    formulario.append("timestamp", String(timestamp));
+    formulario.append("signature", assinatura);
+    const resposta = await fetch(`https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`, { method: "POST", body: formulario });
+    let dados = {};
+    try { dados = await resposta.json(); } catch (_) { dados = {}; }
+    if (!resposta.ok) return { ok: false, erro: dados?.error?.message || "Cloudinary não conseguiu enviar a imagem." };
+    return { ok: true, url: dados.secure_url || dados.url || "", dados };
+  } catch (erro) { return { ok: false, erro: erro.message }; }
+}
+
 async function gerarImagemCloudinary(prompt) {
     const config = obterCloudinaryConfig();
 
@@ -910,93 +932,50 @@ const FIREBASE_MEDIA_TOOL = path.join(
 );
 
 
-function incorporarImagensNoHTML(nomeArquivo) {
+async function incorporarImagensNoHTML(nomeArquivo) {
   try {
     const caminhoHTML = path.join(GERADOS_DIR, path.basename(nomeArquivo));
-
-    if (!fs.existsSync(caminhoHTML)) {
-      console.log("[NEXUS IMAGEM] HTML não encontrado:", caminhoHTML);
-      return { ok: false, erro: "HTML não encontrado." };
-    }
-
+    if (!fs.existsSync(caminhoHTML)) return { ok: false, erro: "HTML não encontrado." };
     let html = fs.readFileSync(caminhoHTML, "utf-8");
+    // Pega todos /uploads/xxx
+    const regex = /(<img\b[^>]*\bsrc=["'])(\/uploads\/([^"']+))(["'][^>]*>)/gi;
+    const matches = [...html.matchAll(regex)];
+    if (matches.length === 0) return { ok: true, alteracoes: 0 };
     let alteracoes = 0;
-
-    html = html.replace(
-      /(<img\b[^>]*\bsrc=["'])(\/uploads\/([^"']+))(["'][^>]*>)/gi,
-      (trecho, inicio, url, nomeImagem, fim) => {
-        try {
-          const nomeSeguro = path.basename(decodeURIComponent(nomeImagem));
-          const caminhoImagem = path.join(UPLOADS_DIR, nomeSeguro);
-
-          if (!fs.existsSync(caminhoImagem)) {
-            console.log(
-              "[NEXUS IMAGEM] Arquivo não encontrado:",
-              caminhoImagem
-            );
-            return trecho;
-          }
-
-          const extensao = path.extname(nomeSeguro).toLowerCase();
-
-          const tipos = {
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".png": "image/png",
-            ".gif": "image/gif",
-            ".webp": "image/webp",
-            ".svg": "image/svg+xml"
-          };
-
-          const mime = tipos[extensao] || "application/octet-stream";
-
-          const dados = fs.readFileSync(caminhoImagem);
-          const base64 = dados.toString("base64");
-          const dataURI = `data:${mime};base64,${base64}`;
-
-          alteracoes++;
-
-          console.log(
-            `[NEXUS IMAGEM] Incorporada: ${nomeSeguro} (${dados.length} bytes)`
-          );
-
-          return inicio + dataURI + fim;
-        } catch (erro) {
-          console.error(
-            "[NEXUS IMAGEM] Erro ao incorporar imagem:",
-            erro.message
-          );
-          return trecho;
-        }
-      }
-    );
-
+    for (const m of matches) {
+      const trechoCompleto = m[0];
+      const inicioSrc = m[1];
+      const nomeImagem = m[3];
+      const fimSrc = m[4];
+      try {
+        const nomeSeguro = path.basename(decodeURIComponent(nomeImagem));
+        const caminhoImagem = path.join(UPLOADS_DIR, nomeSeguro);
+        if (!fs.existsSync(caminhoImagem)) continue;
+        const envio = await enviarImagemCloudinary(caminhoImagem);
+        if (!envio.ok || !envio.url) { console.log("[NEXUS IMAGEM] Falha Cloudinary:", envio.erro); continue; }
+        const novoTrecho = inicioSrc + envio.url + fimSrc;
+        html = html.replace(trechoCompleto, novoTrecho);
+        alteracoes++;
+        console.log(`[NEXUS IMAGEM] Cloudinary: ${nomeSeguro} -> ${envio.url}`);
+      } catch (e) { console.log("[NEXUS IMAGEM] Erro:", e.message); }
+    }
+    // Trava de segurança: nunca deixa base64 no HTML final
+    if (html.includes("data:image/") && html.includes(";base64,")) {
+      console.log("[NEXUS IMAGEM] AVISO: base64 encontrado, removendo...");
+      html = html.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+\/=\s]+/g, "");
+    }
     fs.writeFileSync(caminhoHTML, html, "utf-8");
-
-    console.log(
-      `[NEXUS IMAGEM] ${alteracoes} imagem(ns) incorporada(s) em ${path.basename(nomeArquivo)}`
-    );
-
-    return {
-      ok: true,
-      alteracoes
-    };
+    console.log(`[NEXUS IMAGEM] ${alteracoes} imagem(ns) no Cloudinary em ${path.basename(nomeArquivo)}`);
+    return { ok: true, alteracoes };
   } catch (erro) {
-    console.error(
-      "[NEXUS IMAGEM] Falha:",
-      erro.message
-    );
-
-    return {
-      ok: false,
-      erro: erro.message
-    };
+    console.error("[NEXUS IMAGEM] Falha:", erro.message);
+    return { ok: false, erro: erro.message };
   }
 }
 
 async function sincronizarHTMLFirebase(nomeArquivo) {
   try {
-    const imagemPersistida = incorporarImagensNoHTML(nomeArquivo);
+    const imagemPersistida = await incorporarImagensNoHTML(nomeArquivo);
 
     if (!imagemPersistida.ok) {
       console.error(
