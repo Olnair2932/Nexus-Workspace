@@ -633,12 +633,35 @@ async function excluirHTML(arquivo) {
         alert("🗑️ HTML excluído com sucesso!"); carregarHTMLsGerados();
     } catch (erro) { console.error("NEXUS: erro ao excluir", erro); alert("❌ Erro ao excluir: " + erro.message); }
 }
+async function copiarHTML(arquivo) {
+  if (!arquivo) return;
+  try {
+    const resposta = await fetch("/html_gerados/" + encodeURIComponent(arquivo));
+    if (!resposta.ok) throw new Error("Erro HTTP " + resposta.status);
+    const conteudo = await resposta.text();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(conteudo);
+    } else {
+      const area = document.createElement("textarea");
+      area.value = conteudo;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      document.body.removeChild(area);
+    }
+    alert("📋 HTML copiado! Agora é só colar onde quiser. Ele fica disponível por 24h.");
+  } catch (erro) {
+    console.error("NEXUS: erro ao copiar", erro);
+    alert("❌ Erro ao copiar: " + erro.message);
+  }
+}
+
 function renderizarHTMLs(paginas) {
     const lista = document.getElementById("listaHTML"); if (!lista) return;
     if (!paginas || paginas.length === 0) { lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><strong>Nenhuma página criada</strong><span>As páginas geradas pelo Nexus aparecerão aqui.</span></div>`; return; }
     lista.innerHTML = paginas.map((pagina) => {
         const arquivo = pagina.arquivo || ""; const titulo = pagina.titulo || arquivo;
-        return `<div class="html-item"><div class="html-item-info"><strong>🛍️ ${titulo}</strong><small>${arquivo}</small></div><div class="html-item-acoes"><button type="button" onclick="visualizarHTML('${arquivo}')">👁️ Visualizar</button><button type="button" onclick="editarHTML('${arquivo}')">✏️ Editar</button><button type="button" onclick="excluirHTML('${arquivo}')">🗑️ Excluir</button></div></div>`;
+        return `<div class="html-item"><div class="html-item-info"><strong>🛍️ ${titulo}</strong><small>${arquivo}</small></div><div class="html-item-acoes"><button type="button" onclick="visualizarHTML('${arquivo}')">👁️ Visualizar</button><button type="button" onclick="editarHTML('${arquivo}')">✏️ Editar</button><button type="button" onclick="copiarHTML('${arquivo}')">📋 Copiar</button><button type="button" onclick="excluirHTML('${arquivo}')">🗑️ Excluir</button></div></div>`;
     }).join("");
 }
 async function carregarHTMLsGerados() {
