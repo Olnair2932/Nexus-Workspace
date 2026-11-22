@@ -639,6 +639,13 @@ async function copiarHTML(arquivo) {
     const resposta = await fetch("/html_gerados/" + encodeURIComponent(arquivo));
     if (!resposta.ok) throw new Error("Erro HTTP " + resposta.status);
     const conteudo = await resposta.text();
+    // Se for gigante (como o Teste Limpeza de 4 MB), copia o LINK em vez do HTML inteiro
+    if (conteudo.length > 500000) {
+      const link = window.location.origin + "/html_gerados/" + encodeURIComponent(arquivo);
+      try { await navigator.clipboard.writeText(link); } catch (e) {}
+      alert("⚠️ Esse HTML tem " + conteudo.length + " letras - grande demais pro copiar do celular. Copiei o LINK dele em vez do HTML inteiro. É só colar o link onde quiser: " + link);
+      return;
+    }
 
     // 1. Tenta copiar de verdade
     let copiou = false;
