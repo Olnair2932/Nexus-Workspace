@@ -2303,7 +2303,7 @@ app.post("/api/gemini/chave", (req, res) => {
   const autenticacao = obterAutenticacaoStudio(req);
   if (!autenticacao) return res.status(401).json({ ok: false, erro: "Login inválido." });
   const chave = String((req.body && req.body.chave) || "").trim();
-  if (chave && !chave.startsWith("AIza")) return res.status(400).json({ ok: false, erro: "Chave inválida. Tem que começar com AIza." });
+  if (chave && !(chave.startsWith("AIza") || chave.startsWith("AQ."))) return res.status(400).json({ ok: false, erro: "Chave inválida. Tem que começar com AIza ou AQ." });
   if (chave && chave.length < 20) return res.status(400).json({ ok: false, erro: "Chave muito curta." });
   salvarChaveGemini(autenticacao.uid, chave);
   return res.json({ ok: true, usando_propria: !!chave, mensagem: chave ? "Sua chave foi salva!" : "Voltou a usar a chave do admin." });

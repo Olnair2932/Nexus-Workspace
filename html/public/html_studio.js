@@ -742,7 +742,7 @@ async function salvarChaveGemini() {
   const input = document.getElementById("inputChaveGemini");
   const chave = (input?.value || "").trim();
   if (!chave) { alert("Cole sua chave Gemini primeiro. Ela começa com AIza..."); return; }
-  if (!chave.startsWith("AIza")) { alert("Chave inválida. Tem que começar com AIza."); return; }
+  if (!(chave.startsWith("AIza") || chave.startsWith("AQ."))) { alert("Chave inválida. Tem que começar com AIza ou AQ."); return; }
   try {
     const r = await fetch("/api/gemini/chave", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chave }) });
     const d = await r.json();
