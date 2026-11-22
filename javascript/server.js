@@ -1803,6 +1803,12 @@ app.get("/", (req, res) => {
         return res.status(401).send("Autorização do Studio inválida ou expirada.");
     }
 
+    // Trava: sem token válido, volta para o Acesso
+    const autenticacao = obterAutenticacaoStudio(req);
+    if (!autenticacao) {
+      return res.redirect("https://nexus-acesso.onrender.com/painel");
+    }
+    
     return res.sendFile(
         path.join(WORKSPACE, "html", "public", "html_studio.html")
     );
