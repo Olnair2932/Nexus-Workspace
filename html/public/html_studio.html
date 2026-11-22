@@ -133,7 +133,18 @@
             </div>
         </section>
     </main>
-    <footer style="display:flex; flex-direction:column; gap:4px; text-align:center; white-space:normal; line-height:1.4; padding:14px 12px;"><strong>NEXUS HTML STUDIO</strong><span>Sistema de geração de páginas - gemini-3.1-flash-lite | ~/workspace</span></footer>
+    <section id="chaveGeminiBox" style="margin:16px; padding:14px; border:1px solid #2a3a4a; border-radius:12px; background:#101c26;">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><strong>🔑 Minha chave Gemini</strong><span id="statusChaveGemini" style="font-size:13px; opacity:.85;">Carregando...</span></div>
+  <p style="font-size:13px; opacity:.85; margin:0 0 10px;">Cole sua chave pessoal. Se deixar vazio, usa a chave do admin por padrão.</p>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <input type="password" id="inputChaveGemini" placeholder="AIza..." autocomplete="off" style="flex:1; min-width:200px; padding:10px; border-radius:8px; border:1px solid #333; background:#0b1118; color:#fff;" />
+    <button type="button" id="btnMostrarChave" style="padding:10px 12px; border-radius:8px;">👁️</button>
+    <button type="button" id="btnSalvarChaveGemini" style="padding:10px 14px; border-radius:8px; background:#22c55e; color:#fff; font-weight:700;">💾 Salvar minha chave</button>
+    <button type="button" id="btnRemoverChaveGemini" style="padding:10px 14px; border-radius:8px;">↩️ Usar chave do admin</button>
+  </div>
+  <small style="opacity:.7;">Sua chave fica salva por seu id (e-mail). Quando você voltar e logar com o mesmo e-mail, ela já vem carregada.</small>
+</section>
+<footer style="display:flex; flex-direction:column; gap:4px; text-align:center; white-space:normal; line-height:1.4; padding:14px 12px;"><strong>NEXUS HTML STUDIO</strong><span>Sistema de geração de páginas - gemini-3.1-flash-lite | ~/workspace</span></footer>
     <script src="html_studio.js"></script>
 </body>
 </html>

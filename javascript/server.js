@@ -2277,6 +2277,45 @@ app.post("/api/html/atualizar", async (req, res) => {
     }
 });
 
+// --- Chave Gemini pessoal por UID ---
+const CHAVES_GEMINI_FILE = path.join(WORKSPACE, "chaves_gemini.json");
+function lerChavesGemini() {
+  try {
+    if (!fs.existsSync(CHAVES_GEMINI_FILE)) return {};
+    const d = JSON.parse(fs.readFileSync(CHAVES_GEMINI_FILE, "utf-8"));
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+function salvarChaveGemini(uid, chave) {
+  const todas = lerChavesGemini();
+  if (!chave) delete todas[String(uid)];
+  else todas[String(uid)] = String(chave).trim();
+  fs.writeFileSync(CHAVES_GEMINI_FILE, JSON.stringify(todas, null, 2), "utf-8");
+  return true;
+}
+function obterChaveGeminiUsuario(uid) {
+  const todas = lerChavesGemini();
+  const c = todas[String(uid)];
+  return (c && String(c).trim()) ? String(c).trim() : "";
+}
+// Salvar chave do usuário
+app.post("/api/gemini/chave", (req, res) => {
+  const autenticacao = obterAutenticacaoStudio(req);
+  if (!autenticacao) return res.status(401).json({ ok: false, erro: "Login inválido." });
+  const chave = String((req.body && req.body.chave) || "").trim();
+  if (chave && !chave.startsWith("AIza")) return res.status(400).json({ ok: false, erro: "Chave inválida. Tem que começar com AIza." });
+  if (chave && chave.length < 20) return res.status(400).json({ ok: false, erro: "Chave muito curta." });
+  salvarChaveGemini(autenticacao.uid, chave);
+  return res.json({ ok: true, usando_propria: !!chave, mensagem: chave ? "Sua chave foi salva!" : "Voltou a usar a chave do admin." });
+});
+// Ver se usuário já tem chave (sem devolver a chave!)
+app.get("/api/gemini/chave", (req, res) => {
+  const autenticacao = obterAutenticacaoStudio(req);
+  if (!autenticacao) return res.status(401).json({ ok: false, erro: "Login inválido." });
+  const tem = !!obterChaveGeminiUsuario(autenticacao.uid);
+  return res.json({ ok: true, tem_chave_propria: tem, usando: tem ? "sua" : "admin" });
+});
+
 // GERAR HTML COM GEMINI 3.1 LITE
 app.post("/api/html/gerar", async (req, res) => {
     const nome = String(req.body?.nome || "").trim();
@@ -2338,7 +2377,10 @@ Use exatamente essa URL como fonte de um elemento <video controls playsinline pr
 
     const gerador = path.join(PYTHON_DIR, "gerar_codigo.py");
     const resultado = await new Promise((resolve) => {
-        execFile("python3", [gerador, solicitacao], { cwd: WORKSPACE, env: process.env, timeout: 600000, maxBuffer: 30 * 1024 * 1024 }, (erro, stdout, stderr) => {
+        const chaveUsuario = obterChaveGeminiUsuario(autenticacao.uid);
+    const envGeracao = { ...process.env };
+    if (chaveUsuario) envGeracao.GEMINI_API_KEY = chaveUsuario;
+    execFile("python3", [gerador, solicitacao], { cwd: WORKSPACE, env: envGeracao, timeout: 600000, maxBuffer: 30 * 1024 * 1024 }, (erro, stdout, stderr) => {
             resolve({ ok: !erro, stdout: stdout || "", stderr: stderr || "", erro: erro ? erro.message : "" });
         });
     });

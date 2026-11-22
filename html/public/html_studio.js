@@ -717,6 +717,62 @@ async function carregarHTMLsGerados() {
         renderizarHTMLs(dados.paginas || []);
     } catch (erro) { console.error("NEXUS HTML STUDIO:", erro); }
 }
+// --- Chave Gemini pessoal por UID/e-mail ---
+async function carregarStatusChaveGemini() {
+  const status = document.getElementById("statusChaveGemini");
+  const input = document.getElementById("inputChaveGemini");
+  if (!status) return;
+  try {
+    const r = await fetch("/api/gemini/chave");
+    const d = await r.json();
+    if (d && d.ok && d.tem_chave_propria) {
+      status.textContent = "✅ Usando SUA chave (salva por seu id)";
+      status.style.color = "#22c55e";
+      // Mostra que tem chave salva, sem mostrar a chave
+      if (input) input.placeholder = "•••••••• Chave salva - cole uma nova para trocar";
+    } else {
+      status.textContent = "ℹ️ Usando chave do admin (padrão)";
+      status.style.color = "#fbbf24";
+    }
+  } catch (e) {
+    status.textContent = "ℹ️ Usando chave do admin (padrão)";
+  }
+}
+async function salvarChaveGemini() {
+  const input = document.getElementById("inputChaveGemini");
+  const chave = (input?.value || "").trim();
+  if (!chave) { alert("Cole sua chave Gemini primeiro. Ela começa com AIza..."); return; }
+  if (!chave.startsWith("AIza")) { alert("Chave inválida. Tem que começar com AIza."); return; }
+  try {
+    const r = await fetch("/api/gemini/chave", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chave }) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.erro || "Falha ao salvar");
+    alert("✅ Sua chave foi salva! Da próxima vez que você logar com o mesmo e-mail, ela já vem carregada.");
+    if (input) input.value = "";
+    carregarStatusChaveGemini();
+  } catch (e) { alert("❌ Erro: " + e.message); }
+}
+async function removerChaveGemini() {
+  if (!confirm("Voltar a usar a chave do admin? Sua chave salva será apagada.")) return;
+  try {
+    const r = await fetch("/api/gemini/chave", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chave: "" }) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.erro || "Falha");
+    alert("↩️ Agora está usando a chave do admin.");
+    const input = document.getElementById("inputChaveGemini");
+    if (input) { input.value = ""; input.placeholder = "AIza..."; }
+    carregarStatusChaveGemini();
+  } catch (e) { alert("❌ Erro: " + e.message); }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  carregarStatusChaveGemini();
+  document.getElementById("btnSalvarChaveGemini")?.addEventListener("click", salvarChaveGemini);
+  document.getElementById("btnRemoverChaveGemini")?.addEventListener("click", removerChaveGemini);
+  document.getElementById("btnMostrarChave")?.addEventListener("click", () => {
+    const i = document.getElementById("inputChaveGemini");
+    if (i) i.type = (i.type === "password" ? "text" : "password");
+  });
+});
 document.addEventListener("DOMContentLoaded", carregarHTMLsGerados);
 
 async function carregarModoEdicao() {
